@@ -1,4 +1,5 @@
 export const canRecognize = false;
+export const canReadMrz = false;
 export async function cleanupScans() {}
 export async function keepScan(uri: string) {
   return uri;
@@ -14,7 +15,10 @@ export async function editScan(
 }
 export async function recognize(
   _uri: string,
-  _mode: "id" | "imei",
+  _mode: "imei",
 ): Promise<{ text: string; confidence: number }> {
   throw new Error("nativeRequired");
+}
+export async function recognizeMrz(_uri: string): Promise<string[]> {
+  throw new Error("mrzNativeRequired");
 }

@@ -11,13 +11,15 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { useApp } from "../state/app-context";
 import { emptyPerson, type Person } from "../domain/models";
 import { extractImeis } from "../domain/validation";
-import { extractPerson } from "../domain/ocr";
+import { readAfghanMrz } from "../domain/mrz";
 import {
   canRecognize,
+  canReadMrz,
   deleteScans,
   editScan,
   keepScan,
   recognize,
+  recognizeMrz,
 } from "../services/scanning";
 import {
   Button,
@@ -58,13 +60,16 @@ export function Scanner({
   const files = useRef<string[]>([]);
   const active = useRef(true);
   const processing = useRef(false);
-  useEffect(
-    () => () => {
+  const readerAvailable = mode === "id" ? canReadMrz : canRecognize;
+  const unavailableMessage =
+    mode === "id" ? "mrzNativeRequired" : "nativeRequired";
+  useEffect(() => {
+    active.current = true;
+    return () => {
       active.current = false;
       if (!processing.current) void deleteScans(files.current);
-    },
-    [],
-  );
+    };
+  }, []);
   async function run(work: () => Promise<void>) {
     if (processing.current) return;
     processing.current = true;
@@ -81,10 +86,20 @@ export function Scanner({
     }
   }
   async function close() {
-    if (processing.current) return;
-    await deleteScans(files.current);
-    files.current = [];
-    onClose();
+    // Closing during recognition unmounts the UI; run() removes its files once
+    // native work releases the image. No late result is applied to the draft.
+    if (processing.current) {
+      active.current = false;
+      onClose();
+      return;
+    }
+    try {
+      await deleteScans(files.current);
+      files.current = [];
+      onClose();
+    } catch (e) {
+      setError(errorText(e, t));
+    }
   }
   async function capture() {
     const result = await camera.current?.takePictureAsync({
@@ -98,28 +113,38 @@ export function Scanner({
   }
   async function edit(action: "rotate" | "crop") {
     if (!photo) return;
+    setReviewing(false);
+    setFields(emptyPerson());
+    setImeis([]);
     const result = await editScan(photo.uri, photo.width, photo.height, action);
     files.current.push(result.uri);
     if (active.current) setPhoto(result);
   }
   async function read() {
     if (!photo) return;
-    const result = await recognize(photo.uri, mode);
-    if (!active.current) return;
+    setReviewing(false);
+    setFields(emptyPerson());
     if (mode === "imei") {
+      const result = await recognize(photo.uri, "imei");
+      if (!active.current) return;
       const values = extractImeis(result.text);
       setImeis(values);
       if (!values.length) setError(t("invalidImei"));
     } else {
-      const found = extractPerson(result.text);
-      setFields({ ...emptyPerson(), ...found });
+      const result = readAfghanMrz(await recognizeMrz(photo.uri));
+      if (!active.current) return;
+      if (!result.ok) {
+        setError(t(result.error));
+        return;
+      }
+      setFields({ ...emptyPerson(), ...result.fields });
       setReviewing(true);
-      if (!Object.keys(found).length) setError(t("noText"));
     }
   }
   async function accept(imei?: string) {
     await deleteScans(files.current);
     files.current = [];
+    if (!active.current) return;
     if (imei) onImei(imei);
     else
       onPerson(
@@ -137,7 +162,6 @@ export function Scanner({
               label={t("close")}
               small
               secondary
-              disabled={busy}
               onPress={() => void close()}
             />
           }
@@ -145,7 +169,7 @@ export function Scanner({
         <Notice message={t("photoPrivacy")} />
         <Notice message={error} tone="error" />
         {Platform.OS !== "android" ? (
-          <Notice message={t("nativeRequired")} />
+          <Notice message={t(unavailableMessage)} />
         ) : !permission?.granted ? (
           <Card>
             <Txt>{t("cameraPermission")}</Txt>
@@ -209,6 +233,22 @@ export function Scanner({
                   borderRadius: 14,
                 }}
               />
+              {mode === "id" ? (
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: "absolute",
+                    left: "10%",
+                    right: "10%",
+                    top: "58%",
+                    height: "14%",
+                    borderWidth: 2,
+                    borderStyle: "dashed",
+                    borderColor: "#DDF4AA",
+                    borderRadius: 4,
+                  }}
+                />
+              ) : null}
             </View>
             <Txt muted size={12}>
               {t(mode === "id" ? "idHint" : "scanHint")}
@@ -265,12 +305,14 @@ export function Scanner({
               />
             </Row>
             <Button
-              label={t("recognize")}
+              label={t(mode === "id" ? "readMrz" : "recognize")}
               loading={busy}
-              disabled={!canRecognize}
+              disabled={!readerAvailable}
               onPress={() => void run(read)}
             />
-            {!canRecognize ? <Notice message={t("nativeRequired")} /> : null}
+            {!readerAvailable ? (
+              <Notice message={t(unavailableMessage)} />
+            ) : null}
           </>
         )}
         {imeis.length ? (
@@ -278,7 +320,10 @@ export function Scanner({
             <Txt bold>{t("review")}</Txt>
             {imeis.map((imei) => (
               <View key={imei} style={{ marginTop: 12 }}>
-                <Chip label={imei} onPress={() => void accept(imei)} />
+                <Chip
+                  label={imei}
+                  onPress={() => void run(() => accept(imei))}
+                />
               </View>
             ))}
           </Card>
@@ -287,9 +332,21 @@ export function Scanner({
           <ScrollView keyboardShouldPersistTaps="handled">
             <View style={{ height: 20 }} />
             <Txt bold>{t("review")}</Txt>
+            <Notice message={t("mrzReview")} />
             <PersonFields compact={false} value={fields} onChange={setFields} />
-            <Button label={t("apply")} onPress={() => void accept()} />
+            <Button
+              label={t("apply")}
+              loading={busy}
+              onPress={() => void run(() => accept())}
+            />
           </ScrollView>
+        ) : null}
+        {mode === "id" ? (
+          <Button
+            label={t("mrzManual")}
+            secondary
+            onPress={() => void close()}
+          />
         ) : null}
       </Screen>
     </Modal>

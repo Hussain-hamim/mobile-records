@@ -257,16 +257,20 @@ const copy = {
     "سوابق شما بدون اینترنت هم در دسترس است.",
   ],
   scanImei: ["Scan IMEI", "IMEI سکین کړئ", "اسکن IMEI"],
-  scanId: ["Scan tazkira", "تذکره سکین کړئ", "اسکن تذکره"],
+  scanId: [
+    "Scan e-ID MRZ",
+    "د برېښنايي تذکرې MRZ سکین",
+    "اسکن MRZ تذکره الکترونیکی",
+  ],
   scanHint: [
     "Align the barcode or printed number inside the frame.",
     "بارکوډ یا چاپ شوې شمېره په چوکاټ کې ونیسئ.",
     "بارکد یا شماره چاپی را داخل کادر قرار دهید.",
   ],
   idHint: [
-    "Capture either side. Text is read on this phone only.",
-    "هر اړخ عکس کړئ. متن یوازې په دې موبایل لوستل کېږي.",
-    "از هر طرف عکس بگیرید. متن فقط در همین گوشی خوانده می‌شود.",
+    "Use the BACK of the e-ID. Keep all three lines with < symbols sharp and inside the lower guide. Avoid glare. Reading works offline.",
+    "د برېښنايي تذکرې شا ونیسئ. د < نښو درې واړه کرښې په لاندې چوکاټ کې روښانه وساتئ. له ځلا ډډه وکړئ. لوستل بې انټرنېټه کېږي.",
+    "پشت تذکره الکترونیکی را بگیرید. هر سه سطر دارای علامت < را واضح در کادر پایین نگه دارید. از انعکاس نور جلوگیری کنید. خواندن آفلاین است.",
   ],
   photoPrivacy: [
     "Photos are deleted after review. Only confirmed fields are saved.",
@@ -278,15 +282,50 @@ const copy = {
   rotate: ["Rotate", "څرخول", "چرخاندن"],
   crop: ["Trim edges", "څنډې پرې کړئ", "برش حاشیه"],
   recognize: ["Read text", "متن ولولئ", "خواندن متن"],
+  readMrz: [
+    "Read MRZ · offline",
+    "MRZ ولولئ · بې انټرنېټه",
+    "خواندن MRZ · آفلاین",
+  ],
+  mrzReview: [
+    "MRZ checks passed. Compare the name and full ID number with the card before accepting; checksums do not verify identity or protect the name. Names are in Latin letters and may be shortened. Other details must be entered manually.",
+    "د MRZ کنټرولي شمېرې سمې دي. له منلو مخکې نوم او د تذکرې بشپړه شمېره له کارت سره پرتله کړئ؛ دا کتنه هویت یا نوم نه تاییدوي. نوم په لاتین تورو دی او ښايي لنډ وي. نور معلومات په لاس ولیکئ.",
+    "ارقام کنترلی MRZ درست است. پیش از پذیرش، نام و شماره کامل تذکره را با کارت مقایسه کنید؛ این بررسی هویت یا نام را تایید نمی‌کند. نام با حروف لاتین است و ممکن است کوتاه باشد. سایر اطلاعات را دستی وارد کنید.",
+  ],
+  mrzNotFound: [
+    "No complete MRZ found. Retake the back of the e-ID with all three lines visible, or enter details manually.",
+    "بشپړ MRZ ونه موندل شو. د تذکرې د شا درې واړه کرښې بیا عکس کړئ یا معلومات په لاس ولیکئ.",
+    "MRZ کامل یافت نشد. از پشت تذکره با هر سه سطر واضح دوباره عکس بگیرید یا اطلاعات را دستی وارد کنید.",
+  ],
+  mrzInvalid: [
+    "The MRZ could not be read reliably. Check the angle, glare and missing characters, then retake or enter details manually.",
+    "MRZ په سمه توګه ونه لوستل شو. زاویه، ځلا او ورکې نښې وګورئ؛ بیا عکس واخلئ یا معلومات په لاس ولیکئ.",
+    "MRZ به‌درستی خوانده نشد. زاویه، انعکاس نور و حروف ناقص را بررسی کنید؛ دوباره عکس بگیرید یا دستی وارد کنید.",
+  ],
+  mrzUnsupported: [
+    "This reader supports Afghan e-ID MRZs with a complete 13-digit ID number. Enter this card’s details manually.",
+    "دا لوستونکی د افغان برېښنايي تذکرې MRZ او بشپړه 13 رقمي شمېره مني. د دې کارت معلومات په لاس ولیکئ.",
+    "این خواننده MRZ تذکره الکترونیکی افغانستان با شماره کامل 13 رقمی را پشتیبانی می‌کند. اطلاعات این کارت را دستی وارد کنید.",
+  ],
+  mrzAmbiguous: [
+    "The reads disagree. Capture one card more clearly or enter its details manually.",
+    "لوستل شوي معلومات توپیر لري. د یوه کارت روښانه عکس واخلئ یا معلومات په لاس ولیکئ.",
+    "نتایج خواندن متفاوت است. از یک کارت عکس واضح‌تر بگیرید یا اطلاعات را دستی وارد کنید.",
+  ],
+  mrzNativeRequired: [
+    "MRZ scanning needs the updated Android build. You can enter details manually here.",
+    "د MRZ سکین د Android نوي جوړښت ته اړتیا لري. دلته معلومات په لاس لیکلی شئ.",
+    "اسکن MRZ به نسخه جدید Android نیاز دارد. اینجا می‌توانید اطلاعات را دستی وارد کنید.",
+  ],
+  mrzManual: [
+    "Enter details manually",
+    "معلومات په لاس ولیکئ",
+    "ورود دستی اطلاعات",
+  ],
   apply: [
     "Accept reviewed fields",
     "کتل شوي معلومات ومنئ",
     "پذیرش اطلاعات بازبینی‌شده",
-  ],
-  noText: [
-    "No labelled fields found. Enter the details manually or retake.",
-    "معلومات ونه موندل شول. په لاس یې ولیکئ یا بیا عکس واخلئ.",
-    "اطلاعات یافت نشد. دستی وارد کنید یا دوباره عکس بگیرید.",
   ],
   cameraPermission: [
     "Allow camera access to scan, or enter details manually.",

@@ -9,7 +9,7 @@ npm ci
 npm run web
 ```
 
-Choose **Explore demo**. The demo uses synthetic records in memory and never connects to Supabase. Browser refresh clears demo records. Production accounts and encrypted storage are Android-only. Camera OCR requires a development build; no mock OCR or simulated sync is shown as successful.
+Choose **Explore demo**. The demo uses synthetic records in memory and never connects to Supabase. Browser refresh clears demo records. Production accounts and encrypted storage are Android-only. MRZ and printed-IMEI scanning require an updated Android development build; no mock scanning or simulated sync is shown as successful.
 
 ## Configure the backend
 
@@ -40,7 +40,9 @@ Use your EAS project and signing credentials when prompted. The Android package 
 
 - `expo-sqlite` builds from source with SQLCipher. The app refuses unencrypted production storage. Each account/shop gets a separate database and SecureStore key.
 - Restarted sessions unlock through the Android device lock. A device PIN/password/biometric must be configured. Initial sign-in, staff administration and first password change require internet.
-- `Tesseract4Android 4.9.0` uses bundled `eng`, `pus`, and `fas` models. OCR reads only app-cache images. Recognition runs off the JavaScript thread; photos are removed after review/cancellation and abandoned captures are cleaned at startup. No raw OCR or image uploads exist.
+- Tazkira scanning reads the **three-line MRZ on the back of an Afghan e-ID**, replacing general front/back label extraction. `Tesseract4Android 4.9.0` recognizes Latin MRZ characters locally with the bundled `eng` model; there are no runtime downloads or online scanning services. Pashto/Dari UI remains supported. Printed IMEI recognition is unchanged.
+- The MRZ parser requires three complete 30-character lines and verifies document, birth-date, expiry-date and composite check digits. It supports the observed Afghan 8+5 digit layout and standard TD1 extended 13-digit numbers. Unsupported layouts, missing characters, failed checks or conflicting reads prompt retake/manual entry. Only the reviewed name and complete formatted ID number are applied. Names are Latin transliterations, may be truncated, and are not protected by the checksum; neither checksums nor text extraction verify identity. Father/grandfather names, addresses and other fields remain manual. See [MRZ implementation and validation](docs/MRZ.md).
+- Recognition reads only app-cache images and runs off the JavaScript thread. Photos are deleted on acceptance/cancellation; closing during recognition discards the result and deletes files when native work finishes. Startup removes abandoned scans. In-memory crops are recycled; neither images nor raw recognition/MRZ text are saved to records, uploaded, backed up or written to logs.
 - Model suggestions use a bundled SQLite index of 254,986 community TAC entries. Results require confirmation and are not authenticity/blacklist checks. Unknown models remain manual.
 - Camera audio/gallery permissions are excluded, and Android backup and device-transfer rules exclude app data.
 

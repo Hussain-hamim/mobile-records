@@ -6,8 +6,10 @@ const native = requireOptionalNativeModule<{
     uri: string,
     mode: string,
   ): Promise<{ text: string; confidence: number }>;
+  readMrz?(uri: string): Promise<string[]>;
 }>("RecordOcr");
 export const canRecognize = !!native;
+export const canReadMrz = !!native?.readMrz;
 const scans = () => new Directory(Paths.cache, "record-scans");
 export async function cleanupScans() {
   for (const name of [
@@ -63,7 +65,11 @@ export async function editScan(
     context.release();
   }
 }
-export async function recognize(uri: string, mode: "id" | "imei") {
+export async function recognize(uri: string, mode: "imei") {
   if (!native) throw new Error("nativeRequired");
   return native.recognize(uri, mode);
+}
+export async function recognizeMrz(uri: string) {
+  if (!native?.readMrz) throw new Error("mrzNativeRequired");
+  return native.readMrz(uri);
 }

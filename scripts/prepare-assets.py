@@ -19,7 +19,7 @@ def save(repo, rev, source, destination):
     print(destination, len(data), flush=True)
     return data
 ocr = revision('tesseract-ocr/tessdata_fast')
-for lang in ['eng', 'fas', 'pus']:
+for lang in ['eng']:
     save('tesseract-ocr/tessdata_fast', ocr, lang + '.traineddata', 'modules/record-ocr/android/src/main/assets/tessdata/' + lang + '.traineddata')
 save('tesseract-ocr/tessdata_fast', ocr, 'LICENSE', 'assets/licenses/tessdata-LICENSE')
 fonts = revision('google/fonts')

@@ -8,7 +8,6 @@ import {
   validateDraft,
   parties,
 } from "../src/domain/validation";
-import { extractPerson } from "../src/domain/ocr";
 import {
   emptyPerson,
   emptyPhone,
@@ -59,13 +58,6 @@ test("IMEI normalization, checksums, candidate extraction and international phon
   assert.ok(validateDraft(d).includes("invalidSecondImei"));
   d.price = "1e5";
   assert.ok(validateDraft(d).includes("invalidPrice"));
-});
-test("OCR extracts labelled fields only and never treats an arbitrary line as a name", () => {
-  assert.deepEqual(extractPerson("John Doe\nAfghanistan"), {});
-  assert.deepEqual(
-    extractPerson("نام: احمد\nنام پدر: محمود\nشماره تذکره: ۱۲۳-۴۵"),
-    { name: "احمد", fatherName: "محمود", idNumber: "123-45" },
-  );
 });
 test("finalization is idempotent, atomic in the vault, and snapshots do not follow profile edits", async () => {
   const repo = new Repository(memoryVault(), member(), randomUUID);

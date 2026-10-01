@@ -26,6 +26,9 @@
         "android.permission.READ_MEDIA_VIDEO",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
+      "permissions": [
+        "android.permission.CAMERA"
       ]
     },
     "web": {
@@ -67,6 +70,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "9a8affa5-c1b8-40e4-8c16-1f606fff41db"
+      }
+    },
+    "owner": "hussain-hamim"
   }
 }
