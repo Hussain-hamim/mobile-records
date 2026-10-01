@@ -1,56 +1,72 @@
-# Welcome to your Expo app 👋
+# Mobile Records
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Android-first Expo SDK 57 application for Afghan phone shops. Purchases and sales, reusable shop/customer details, encrypted offline records, per-shop synchronization, local IMEI/ENID scanning, and printable draft forms. Pashto, Dari and English are included.
 
-## Get started
+## Try the screens
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```sh
+npm ci
+npm run web
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Choose **Explore demo**. The demo uses synthetic records in memory and never connects to Supabase. Browser refresh clears demo records. Production accounts and encrypted storage are Android-only. Camera OCR requires a development build; no mock OCR or simulated sync is shown as successful.
 
-### Other setup steps
+## Configure the backend
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+1. Create a dedicated hosted Supabase project. Copy `.env.example` to `.env.local` and supply its URL and **publishable** key. Never expose a service-role key through `EXPO_PUBLIC_*`.
+2. Link the project with `supabase link --project-ref YOUR_PROJECT_REF`, review `supabase db push --dry-run`, then apply `supabase db push`.
+3. Disable public signups in hosted Auth settings (the local `supabase/config.toml` also disables them). Keep phone/password authentication enabled; no SMS delivery is needed for administrator-provisioned accounts.
+4. Deploy `supabase functions deploy manage-account`. Its gateway JWT check is disabled in config because the function authenticates every request itself using `auth.getUser(token)` before any operation, checks active membership, and restricts staff management to shop owners. Requests without a valid user token are rejected.
+5. On a trusted administrator workstation, supply `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` through environment variables, then run:
 
-## Learn more
+```sh
+node scripts/admin.mjs onboard +93700123456 "Example Mobile Shop"
+# Administrator-assisted recovery:
+node scripts/admin.mjs reset +93700123456
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+The script prints a temporary password for private delivery. Owners/staff must replace it before accessing shop data. A phone number is an administrator-assigned account identifier here; no SMS ownership verification is claimed. Owners create staff accounts from Settings. Recovery must follow the administrator's own identity check.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+The migration enables RLS on all public tables, grants explicit Data API access, and uses invoker-rights functions. No client can update/delete finalized records. Corrections are owner-only append operations. Removing membership or requiring a password reset gates subsequent server access, including with previously issued access tokens. Offline caches cannot be remotely revoked until reconnect.
 
-## Join the community
+## Android build
 
-Join our community of developers creating universal apps.
+```sh
+npx eas-cli@latest build --platform android --profile development
+npx expo start --dev-client
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Use your EAS project and signing credentials when prompted. The Android package is `com.radefy.mobilerecords`; change it before your first store release if needed. Native directories are generated by Expo, ignored in Git, and must not be edited by hand. `modules/record-ocr` and `plugins/with-record-privacy.js` configure the native integration.
+
+- `expo-sqlite` builds from source with SQLCipher. The app refuses unencrypted production storage. Each account/shop gets a separate database and SecureStore key.
+- Restarted sessions unlock through the Android device lock. A device PIN/password/biometric must be configured. Initial sign-in, staff administration and first password change require internet.
+- `Tesseract4Android 4.9.0` uses bundled `eng`, `pus`, and `fas` models. OCR reads only app-cache images. Recognition runs off the JavaScript thread; photos are removed after review/cancellation and abandoned captures are cleaned at startup. No raw OCR or image uploads exist.
+- Model suggestions use a bundled SQLite index of 254,986 community TAC entries. Results require confirmation and are not authenticity/blacklist checks. Unknown models remain manual.
+- Camera audio/gallery permissions are excluded, and Android backup and device-transfer rules exclude app data.
+
+## Data and sync
+
+Entry drafts autosave locally. Finalization atomically writes an immutable transaction snapshot, the customer, and its outbox operations. Client-generated record IDs make repeated taps/retries idempotent. Sync rechecks membership, pushes idempotent operations, then pulls shop-scoped rows in pages. Mutable shop/customer updates compare server versions; conflicts remain visible until staff choose the server copy or retry local changes. Concurrent local edits are serialized around acknowledgment so an in-flight sync does not erase them.
+
+Finalized records preserve the shop/customer details used at the time. Each correction keeps the original and has a reason, actor and timestamp. Original and corrected forms can be printed separately. Pending changes prevent sign-out; reconnect and resolve conflicts first.
+
+## Printing and release gates
+
+The A4 PDF is deliberately marked **DRAFT**. The supplied photograph is insufficient to reproduce the small declarations accurately. The app does not fabricate official wording or claim government approval. Supply a clear blank form to approve field placement and declaration text. Signatures/thumbprints remain physical spaces on paper.
+
+Scanning is implemented, but ENID extraction accuracy has **not** been validated on consented representative cards. The parser extracts label-anchored printed fields and leaves uncertain/missing data for manual review; handwriting is manual. Photos are discarded, so only confirmed fields remain.
+
+Before a pilot, complete [Android acceptance](docs/ANDROID-ACCEPTANCE.md), connect a staging Supabase project, review Pashto/Dari translations, and verify the actual paper form. No remote project, deployment, paid service, or cloud build is created automatically by this repository.
+
+## Checks
+
+```sh
+npm run typecheck
+npm run lint
+npm test
+npx expo export --platform android
+```
+
+Tests cover IMEI validation, conservative extraction, immutable snapshots, retry/idempotency behavior, conflicts, concurrent edits, HTML escaping, and PostgreSQL RLS/password/revocation policies using PGlite. These do not replace Android device tests or live Supabase Auth/Edge Function integration checks.
+
+Source asset commit URLs and checksums are recorded in `assets/asset-manifest.json`; attribution is in [asset licences](assets/licenses/README.md). `npm run assets:prepare` refreshes public assets intentionally and changes that manifest. Keep assets committed so builds and OCR do not need runtime model downloads.

@@ -1,18 +1,39 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
-
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
-
-SplashScreen.preventAutoHideAsync();
-
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useFonts } from "expo-font";
+import { AppProvider, useApp } from "../state/app-context";
+import { AuthScreen } from "../components/auth-screen";
+import { colors } from "../components/ui";
+function Routes() {
+  const { phase } = useApp();
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <>
+      <StatusBar style="dark" />
+      {phase === "ready" ? (
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: colors.bg },
+          }}
+        >
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="new-record" />
+          <Stack.Screen name="record/[id]" />
+        </Stack>
+      ) : (
+        <AuthScreen />
+      )}
+    </>
+  );
+}
+export default function Layout() {
+  const [loaded, error] = useFonts({
+    Noto: require("../../assets/fonts/NotoSansArabic.ttf"),
+  });
+  if (!loaded && !error) return null;
+  return (
+    <AppProvider>
+      <Routes />
+    </AppProvider>
   );
 }

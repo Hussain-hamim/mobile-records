@@ -1,0 +1,42 @@
+[
+  {
+    "source": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/eng.traineddata",
+    "path": "modules/record-ocr/android/src/main/assets/tessdata/eng.traineddata",
+    "sha256": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2"
+  },
+  {
+    "source": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/fas.traineddata",
+    "path": "modules/record-ocr/android/src/main/assets/tessdata/fas.traineddata",
+    "sha256": "db1c0a91208aff00d3cf1ed2c1d23f76419afd5f024688b4f71adc3f2ce4a505"
+  },
+  {
+    "source": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/pus.traineddata",
+    "path": "modules/record-ocr/android/src/main/assets/tessdata/pus.traineddata",
+    "sha256": "f15550bfe3a20ca781cf5afb7b2af6ee769c6521cf4bb990848e72856b484600"
+  },
+  {
+    "source": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/LICENSE",
+    "path": "assets/licenses/tessdata-LICENSE",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  {
+    "source": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/notosansarabic/NotoSansArabic%5Bwdth%2Cwght%5D.ttf",
+    "path": "assets/fonts/NotoSansArabic.ttf",
+    "sha256": "63111b5b2e074dd48cc67692e0a2726d86ee94c1c37fe8598257b7b4e87e869e"
+  },
+  {
+    "source": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/notosansarabic/OFL.txt",
+    "path": "assets/licenses/NotoSansArabic-OFL.txt",
+    "sha256": "07fc70bfeb985cc1a87a8587d0a0c80bab11c86c9dc3fd95b6f0cb332f983e96"
+  },
+  {
+    "source": "https://raw.githubusercontent.com/MoazEb/tac-database/29ed8f61c6bfad300ce6b56f36c3876c4dc6a6d9/tac_full.csv",
+    "path": "assets/data/tac-source.csv",
+    "sha256": "6f514242f69273699485ef4e5315929dc036608f2ea7a7a5e4db043ef0ae718c"
+  },
+  {
+    "source": "https://raw.githubusercontent.com/MoazEb/tac-database/29ed8f61c6bfad300ce6b56f36c3876c4dc6a6d9/LICENSE",
+    "path": "assets/licenses/TAC-LICENSE",
+    "sha256": "74fd730ed34b0820c140fc0d8eddcee47904da27008613f5e37f6d5eaa2e3552"
+  }
+]
