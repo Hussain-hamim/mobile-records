@@ -287,7 +287,7 @@ export function Scanner({
           <ScrollView keyboardShouldPersistTaps="handled">
             <View style={{ height: 20 }} />
             <Txt bold>{t("review")}</Txt>
-            <PersonFields value={fields} onChange={setFields} />
+            <PersonFields compact={false} value={fields} onChange={setFields} />
             <Button label={t("apply")} onPress={() => void accept()} />
           </ScrollView>
         ) : null}

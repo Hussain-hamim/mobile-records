@@ -5,7 +5,8 @@ import type { Transaction } from "../domain/models";
 import { formatDate, formatMoney } from "../domain/format";
 import { Icon, Row, Txt, colors } from "./ui";
 export function RecordRow({ record }: { record: Transaction }) {
-  const { language, gregorian, t } = useApp();
+  const { language, gregorian, t, rtl } = useApp();
+  const buy = record.direction === "buy";
   return (
     <Pressable
       accessibilityRole="button"
@@ -14,50 +15,73 @@ export function RecordRow({ record }: { record: Transaction }) {
         router.push({ pathname: "/record/[id]", params: { id: record.id } })
       }
       style={({ pressed }) => ({
-        paddingVertical: 17,
-        opacity: pressed ? 0.7 : 1,
-        borderBottomWidth: 1,
+        padding: 15,
+        marginBottom: 10,
+        borderRadius: 20,
+        backgroundColor: pressed ? colors.mint : colors.paper,
+        borderWidth: 1,
         borderColor: colors.line,
       })}
     >
-      <Row>
+      <Row style={{ gap: 12 }}>
         <View
           style={{
-            width: 46,
-            height: 54,
-            borderRadius: 14,
-            backgroundColor:
-              record.direction === "buy" ? colors.mint : colors.pale,
+            width: 45,
+            height: 52,
+            borderRadius: 15,
+            backgroundColor: buy ? colors.mint : colors.pale,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
           <Icon
-            name={
-              record.direction === "buy"
-                ? "cellphone-arrow-down"
-                : "cellphone-check"
-            }
-            color={record.direction === "buy" ? colors.green : colors.amber}
+            name={buy ? "cellphone-arrow-down" : "cellphone-check"}
+            size={25}
+            color={buy ? colors.green : colors.amber}
           />
         </View>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
           <Txt bold size={14}>
             {record.phone.brand} {record.phone.model}
           </Txt>
-          <Txt muted size={11}>
-            {record.customer.name} ·{" "}
-            {t(record.direction === "buy" ? "bought" : "sold")}
+          <Txt muted size={12} style={{ marginTop: 3 }}>
+            {record.customer.name}
           </Txt>
         </View>
-        <View>
-          <Txt bold size={12}>
-            {formatMoney(record.price, language)}
-          </Txt>
-          <Txt muted size={10}>
-            {formatDate(record.occurredAt, language, gregorian)}
+        <Icon
+          name={rtl ? "chevron-left" : "chevron-right"}
+          size={18}
+          color="#A1A5B8"
+        />
+      </Row>
+      <Row
+        style={{
+          justifyContent: "space-between",
+          marginTop: 14,
+          paddingTop: 12,
+          borderTopWidth: 1,
+          borderColor: colors.line,
+          gap: 5,
+        }}
+      >
+        <View
+          style={{
+            backgroundColor: buy ? colors.mint : colors.pale,
+            borderRadius: 7,
+            paddingHorizontal: 8,
+            paddingVertical: 3,
+          }}
+        >
+          <Txt size={10} bold color={buy ? colors.green : colors.amber}>
+            {t(buy ? "bought" : "sold")}
           </Txt>
         </View>
+        <Txt size={10} muted>
+          {formatDate(record.occurredAt, language, gregorian)}
+        </Txt>
+        <Txt bold size={13}>
+          {formatMoney(record.price, language)}
+        </Txt>
       </Row>
     </Pressable>
   );

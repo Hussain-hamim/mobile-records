@@ -1,4 +1,5 @@
 import type { Language } from "./models";
+import { digits } from "./validation";
 export function formatDate(
   date: string,
   language: Language,
@@ -8,6 +9,7 @@ export function formatDate(
     language === "en" ? "en-GB" : language === "ps" ? "ps-AF" : "fa-AF",
     {
       calendar: gregorian ? "gregory" : "persian",
+      numberingSystem: "latn",
       timeZone: "Asia/Kabul",
       year: "numeric",
       month: "short",
@@ -15,15 +17,17 @@ export function formatDate(
     },
   ).format(new Date(date));
 }
-export function formatMoney(value: string | number, language: Language) {
+export function formatMoney(value: string | number, _language: Language) {
   return (
-    new Intl.NumberFormat(language === "en" ? "en" : "fa-AF", {
+    new Intl.NumberFormat("en-GB", {
+      numberingSystem: "latn",
       maximumFractionDigits: 2,
-    }).format(Number(value)) + " AFN"
+    }).format(Number(digits(String(value)))) + " AFN"
   );
 }
 export function localDay(date: string) {
   return new Intl.DateTimeFormat("en-CA", {
+    numberingSystem: "latn",
     timeZone: "Asia/Kabul",
     year: "numeric",
     month: "2-digit",

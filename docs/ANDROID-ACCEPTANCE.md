@@ -13,3 +13,7 @@ Run on an EAS development build, not Expo Go. The browser demo cannot validate n
 9. Verify the database file is unreadable without its SQLCipher key; verify keys and sessions are absent from ordinary files and logs. Sign out only after pending changes sync; reopen and ensure previous account data is not exposed.
 
 Production release gates: source-form verification, consented ENID evaluation, device tests above, connected Supabase integration tests, and owner review of translations. EAS project/signing setup and Supabase deployment remain operator steps.
+
+## Form picture export
+
+Use a fresh development build containing `RecordExport`. From an original record and a correction, tap **Save as picture**, choose a folder, and inspect every PNG. Check Pashto/Dari shaping, two IMEIs, long addresses, both transaction directions, DRAFT labels, signatures and thumbprint spaces against the PDF. Multi-page PDFs produce numbered PNGs at 200 dpi. Test cancelling the folder picker, a read-only/full destination, duplicate filenames, airplane mode, and interruption/restart; temporary files under `form-exports` must be removed. Only explicitly exported completed forms should appear in the selected folder; ENID photos remain private and temporary. Browser export displays a complete 2× PNG in an in-app preview with an explicit download link.

@@ -1,9 +1,9 @@
 import type { Language, Person, ShopProfile, Transaction } from "./models";
-import { parties } from "./validation";
+import { digits, parties } from "./validation";
 import { translate, type TextKey } from "../i18n/strings";
 import { formatDate } from "./format";
 export function escapeHtml(value: unknown) {
-  return String(value ?? "").replace(
+  return digits(String(value ?? "")).replace(
     /[&<>"']/g,
     (c) =>
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
@@ -40,7 +40,7 @@ export function formHtml(
     ]
       .map(
         (k) =>
-          `<tr><th>${t(k as TextKey)}</th><td>${escapeHtml(p[k as keyof typeof p]) || "—"}</td></tr>`,
+          `<tr><th>${t(k as TextKey)}</th><td dir="${["phone", "relativePhone", "idNumber", "idVolume", "idPage"].includes(k) ? "ltr" : "auto"}">${escapeHtml(p[k as keyof typeof p]) || "—"}</td></tr>`,
       )
       .join("");
   const phone = Object.entries(record.phone)
@@ -54,7 +54,7 @@ export function formHtml(
   <div class="draft">${t("draftForm")}</div><h1>${escapeHtml(record.shop.shopName)} · ${t(record.direction === "buy" ? "bought" : "sold")}</h1>
   <p dir="ltr">${escapeHtml(record.reference)} · ${escapeHtml(formatDate(record.occurredAt, language, gregorian))} · ${escapeHtml(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kabul", hour: "2-digit", minute: "2-digit" }).format(new Date(record.occurredAt)))}</p>
   ${correction ? `<p>${t("amendments")}: ${escapeHtml(correction)}</p>` : ""}
-  <div class="cols"><section class="col"><h2>${t("seller")}</h2><table>${person(seller)}</table></section><section class="col"><h2>${t("phoneDetails")}</h2><table>${phone}<tr><th>${t("price")}</th><td>${escapeHtml(record.price)} AFN</td></tr></table></section><section class="col"><h2>${t("buyer")}</h2><table>${person(buyer)}</table></section></div>
+  <div class="cols"><section class="col"><h2>${t("seller")}</h2><table>${person(seller)}</table></section><section class="col"><h2>${t("phoneDetails")}</h2><table>${phone}<tr><th>${t("price")}</th><td dir="ltr">${escapeHtml(record.price)} AFN</td></tr></table></section><section class="col"><h2>${t("buyer")}</h2><table>${person(buyer)}</table></section></div>
   <p>${t("printHint")}</p><div class="signatures"><div>${t("seller")}</div><div>${t("buyer")}</div><div>${language === "en" ? "Thumbprint" : language === "ps" ? "د ګوتې نښه" : "اثر انگشت"}</div></div>
   <footer>${t("draftForm")} · ${escapeHtml(record.templateVersion)}<br>${language === "en" ? "Declaration text pending a legible source form." : language === "ps" ? "د اعلامیې متن د روښانه اصلي فورمې په تمه دی." : "متن تعهد در انتظار نسخه خوانای فورم اصلی است."}</footer></body></html>`;
 }

@@ -1,4 +1,11 @@
-import type { ComponentProps, ReactNode } from "react";
+import {
+  Children,
+  useState,
+  useRef,
+  useEffect,
+  type ComponentProps,
+  type ReactNode,
+} from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -15,17 +22,22 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useApp } from "../state/app-context";
 import type { TextKey } from "../i18n/strings";
+import { digits } from "../domain/validation";
 export const colors = {
-  bg: "#F5F6F0",
+  bg: "#F5F6FC",
   paper: "#FFFFFF",
-  ink: "#1E342E",
-  muted: "#748077",
-  green: "#245847",
-  mint: "#DDECE1",
-  line: "#E3E8DF",
-  amber: "#9C642B",
-  pale: "#F6EDDE",
-  red: "#AE483B",
+  ink: "#20233D",
+  muted: "#72768C",
+  green: "#4F54E8",
+  mint: "#ECECFF",
+  line: "#E8EAF3",
+  amber: "#9E4F2D",
+  pale: "#FFF0E6",
+  red: "#BE3D51",
+  navy: "#252945",
+  peach: "#FFD5BC",
+  success: "#287D64",
+  lime: "#DDF4AA",
 };
 export type IconName = ComponentProps<typeof MaterialCommunityIcons>["name"];
 export function Icon({
@@ -59,18 +71,21 @@ export function Txt({
     <Text
       style={[
         {
-          fontFamily: "Noto",
+          fontFamily: rtl ? "Noto" : undefined,
           fontSize: size,
-          lineHeight: size * 1.65,
+          lineHeight: size * (rtl ? 1.8 : 1.35),
           color: color ?? (muted ? colors.muted : colors.ink),
           fontWeight: bold ? "700" : "400",
+          letterSpacing: bold && !rtl ? -0.4 : 0,
           textAlign: rtl ? "right" : "left",
           writingDirection: rtl ? "rtl" : "ltr",
         },
         style,
       ]}
     >
-      {children}
+      {Children.map(children, (child) =>
+        typeof child === "string" ? digits(child) : child,
+      )}
     </Text>
   );
 }
@@ -100,15 +115,23 @@ export function Row({
 export function Screen({
   children,
   scroll = true,
+  resetKey,
 }: {
   children: ReactNode;
   scroll?: boolean;
+  resetKey?: string | number;
 }) {
+  const scrollRef = useRef<ScrollView>(null);
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [resetKey]);
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
       {scroll ? (
         <ScrollView
+          ref={scrollRef}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}
         >
           {children}
@@ -131,11 +154,11 @@ export function Heading({
   return (
     <Row style={{ justifyContent: "space-between", marginBottom: 24 }}>
       <View style={{ flex: 1 }}>
-        <Txt size={29} bold>
+        <Txt size={30} bold>
           {title}
         </Txt>
         {subtitle ? (
-          <Txt muted size={13}>
+          <Txt muted size={14}>
             {subtitle}
           </Txt>
         ) : null}
@@ -181,7 +204,8 @@ export function Button({
         styles.button,
         {
           backgroundColor: secondary ? colors.mint : colors.green,
-          paddingVertical: small ? 8 : 13,
+          paddingVertical: small ? 10 : 16,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
           opacity: disabled || loading ? 0.5 : pressed ? 0.8 : 1,
         },
       ]}
@@ -197,7 +221,7 @@ export function Button({
           />
         ) : null}
         <Txt
-          size={small ? 12 : 14}
+          size={small ? 13 : 15}
           bold
           color={secondary ? colors.green : "#fff"}
         >
@@ -216,20 +240,30 @@ export function Field({
   ...rest
 }: TextInputProps & { label: string; numeric?: boolean }) {
   const { rtl } = useApp();
+  const [focused, setFocused] = useState(false);
   return (
-    <View style={{ gap: 5, marginBottom: 14 }}>
-      <Txt size={12} muted>
+    <View style={{ gap: 8, marginBottom: 18 }}>
+      <Txt size={13} bold>
         {label}
       </Txt>
       <TextInput
         accessibilityLabel={label}
-        value={value}
-        onChangeText={onChangeText}
+        value={value == null || rest.secureTextEntry ? value : digits(value)}
+        onChangeText={
+          onChangeText
+            ? (text) => onChangeText(rest.secureTextEntry ? text : digits(text))
+            : undefined
+        }
         multiline={multiline}
-        placeholderTextColor="#A0ABA3"
+        placeholderTextColor="#969AAF"
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         style={[
           styles.input,
           {
+            fontFamily: rtl && !numeric ? "Noto" : undefined,
+            borderColor: focused ? colors.green : colors.line,
+            backgroundColor: focused ? colors.paper : "#F8F9FD",
             textAlign: numeric ? "left" : rtl ? "right" : "left",
             writingDirection: numeric ? "ltr" : rtl ? "rtl" : "ltr",
             minHeight: multiline ? 88 : 51,
@@ -256,14 +290,16 @@ export function Chip({
       onPress={onPress}
       style={{
         borderRadius: 24,
-        paddingVertical: 7,
+        minHeight: 44,
+        justifyContent: "center",
+        paddingVertical: 9,
         paddingHorizontal: 16,
         backgroundColor: active ? colors.green : colors.paper,
         borderWidth: 1,
         borderColor: active ? colors.green : colors.line,
       }}
     >
-      <Txt size={12} color={active ? "#fff" : colors.muted} bold={active}>
+      <Txt size={13} color={active ? "#fff" : colors.muted} bold={active}>
         {label}
       </Txt>
     </Pressable>
@@ -314,6 +350,182 @@ export function Empty({ title, hint }: { title: string; hint?: string }) {
     </View>
   );
 }
+export function IconButton({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        width: 46,
+        height: 46,
+        borderRadius: 16,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: pressed ? colors.mint : colors.paper,
+        borderWidth: 1,
+        borderColor: colors.line,
+      })}
+    >
+      <Icon name={icon} size={23} color={colors.green} />
+    </Pressable>
+  );
+}
+export function SectionTitle({
+  title,
+  icon,
+  hint,
+}: {
+  title: string;
+  icon?: IconName;
+  hint?: string;
+}) {
+  return (
+    <Row style={{ marginBottom: 18 }}>
+      {icon ? (
+        <View
+          style={{
+            padding: 10,
+            borderRadius: 13,
+            backgroundColor: colors.mint,
+          }}
+        >
+          <Icon name={icon} size={21} color={colors.green} />
+        </View>
+      ) : null}
+      <View style={{ flex: 1 }}>
+        <Txt size={17} bold>
+          {title}
+        </Txt>
+        {hint ? (
+          <Txt size={12} muted>
+            {hint}
+          </Txt>
+        ) : null}
+      </View>
+    </Row>
+  );
+}
+export function Disclosure({
+  title,
+  hint,
+  icon,
+  children,
+  initiallyOpen = false,
+}: {
+  title: string;
+  hint?: string;
+  icon?: IconName;
+  children: ReactNode;
+  initiallyOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(initiallyOpen);
+  return (
+    <View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        accessibilityState={{ expanded: open }}
+        onPress={() => setOpen(!open)}
+        style={{ paddingVertical: 12, minHeight: 48 }}
+      >
+        <Row>
+          {icon ? (
+            <View
+              style={{
+                padding: 10,
+                borderRadius: 13,
+                backgroundColor: colors.mint,
+              }}
+            >
+              <Icon name={icon} color={colors.green} size={21} />
+            </View>
+          ) : null}
+          <View style={{ flex: 1 }}>
+            <Txt bold size={15}>
+              {title}
+            </Txt>
+            {hint ? (
+              <Txt size={12} muted>
+                {hint}
+              </Txt>
+            ) : null}
+          </View>
+          <Icon
+            name={open ? "chevron-up" : "chevron-down"}
+            size={21}
+            color={colors.muted}
+          />
+        </Row>
+      </Pressable>
+      {open ? <View style={{ paddingTop: 16 }}>{children}</View> : null}
+    </View>
+  );
+}
+export function SearchField({
+  value,
+  onChangeText,
+  placeholder,
+}: {
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder: string;
+}) {
+  const { rtl, t } = useApp();
+  const [focused, setFocused] = useState(false);
+  return (
+    <Row
+      style={{
+        backgroundColor: colors.paper,
+        borderWidth: 1,
+        borderColor: focused ? colors.green : colors.line,
+        borderRadius: 18,
+        paddingHorizontal: 16,
+        marginBottom: 20,
+        minHeight: 56,
+      }}
+    >
+      <Icon name="magnify" size={23} color={colors.muted} />
+      <TextInput
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        accessibilityLabel={placeholder}
+        placeholder={placeholder}
+        placeholderTextColor={colors.muted}
+        value={digits(value)}
+        onChangeText={(text) => onChangeText(digits(text))}
+        style={{
+          outlineWidth: 0,
+          flex: 1,
+          minWidth: 0,
+          minHeight: 54,
+          fontSize: 13,
+          fontFamily: rtl ? "Noto" : undefined,
+          color: colors.ink,
+          textAlign: rtl ? "right" : "left",
+        }}
+      />
+      {value ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("clearSearch")}
+          hitSlop={10}
+          onPress={() => onChangeText("")}
+        >
+          <Icon name="close-circle" size={20} color={colors.muted} />
+        </Pressable>
+      ) : null}
+    </Row>
+  );
+}
 export function errorText(error: unknown, t: (k: TextKey) => string) {
   const message = error instanceof Error ? error.message : String(error);
   try {
@@ -327,33 +539,33 @@ const styles = StyleSheet.create({
   content: {
     padding: 22,
     paddingBottom: 32,
-    maxWidth: 760,
+    maxWidth: 680,
     width: "100%",
     alignSelf: "center",
   },
   card: {
     backgroundColor: colors.paper,
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 20,
     borderWidth: 1,
     borderColor: colors.line,
     marginBottom: 14,
   },
   button: {
-    borderRadius: 14,
+    borderRadius: 16,
     paddingHorizontal: 17,
     minHeight: 44,
     justifyContent: "center",
   },
   input: {
+    outlineWidth: 0,
     backgroundColor: "#FAFBF8",
     borderWidth: 1,
     borderColor: colors.line,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    fontFamily: "Noto",
-    fontSize: 15,
+    fontSize: 16,
     color: colors.ink,
   },
 });

@@ -52,6 +52,8 @@ Finalized records preserve the shop/customer details used at the time. Each corr
 
 ## Printing and release gates
 
+Saved records and corrections also offer **Save as picture**. The browser shows an image preview with a **Download PNG** button. Android uses the same PDF template, renders each page as a 200 dpi PNG, and saves to a folder chosen through the system picker. This requires a new development build containing the local `RecordExport` module. No gallery-read permission is requested; temporary rendering files are deleted after export and abandoned export folders are removed at startup. The exported pictures contain the confirmed form fields, never the original ENID photos.
+
 The A4 PDF is deliberately marked **DRAFT**. The supplied photograph is insufficient to reproduce the small declarations accurately. The app does not fabricate official wording or claim government approval. Supply a clear blank form to approve field placement and declaration text. Signatures/thumbprints remain physical spaces on paper.
 
 Scanning is implemented, but ENID extraction accuracy has **not** been validated on consented representative cards. The parser extracts label-anchored printed fields and leaves uncertain/missing data for manual review; handwriting is manual. Photos are discarded, so only confirmed fields remain.

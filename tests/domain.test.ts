@@ -201,3 +201,21 @@ test("conflicts retain local edits; PDF escapes user text and marks unverified t
   assert.ok(html.includes("DRAFT FORM"));
   assert.ok(html.includes("draft-v1"));
 });
+
+test("printed records normalize existing digits without modifying saved records", async () => {
+  const repo = new Repository(memoryVault(), member(), randomUUID);
+  const record = await repo.finalize(draft());
+  record.customer.idNumber = "۱۲۳-٤٥";
+  record.shop.shopNumber = "۲۴";
+  record.phone.model = "iPhone ۱۳";
+  record.price = "۲۴۵۰۰";
+  const original = structuredClone(record);
+  for (const language of ["en", "ps", "fa"] as const) {
+    const html = formHtml(record, language, "", false, "اصلاح ۲");
+    assert.doesNotMatch(html, /[۰-۹٠-٩]/);
+    assert.ok(html.includes("123-45"));
+    assert.ok(html.includes("iPhone 13"));
+    assert.ok(html.includes("24500 AFN"));
+  }
+  assert.deepEqual(record, original);
+});

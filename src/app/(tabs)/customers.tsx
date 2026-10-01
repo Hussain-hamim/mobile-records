@@ -1,14 +1,14 @@
 import { useState } from "react";
+import { digits } from "../../domain/validation";
 import { FlatList, View } from "react-native";
 import { router } from "expo-router";
 import { useApp } from "../../state/app-context";
 import {
-  Button,
+  IconButton,
   Card,
   Empty,
-  Field,
+  SearchField,
   Heading,
-  Icon,
   Row,
   Screen,
   Txt,
@@ -17,18 +17,22 @@ import {
 export default function Customers() {
   const { customers, t } = useApp();
   const [query, setQuery] = useState("");
-  const q = query.trim().toLocaleLowerCase();
+  const q = digits(query).trim().toLocaleLowerCase();
   return (
     <Screen scroll={false}>
-      <Heading
-        title={t("customers")}
-        subtitle={`${customers.length} ${t("customers")}`}
+      <Heading title={t("customers")} subtitle={t("savedCustomers")} />
+      <SearchField
+        placeholder={t("search")}
+        value={query}
+        onChangeText={setQuery}
       />
-      <Field label={t("search")} value={query} onChangeText={setQuery} />
+      <Txt size={12} muted style={{ marginBottom: 16 }}>
+        {customers.length} {t("customers")}
+      </Txt>
       <FlatList
         data={customers.filter((c) =>
           [c.person.name, c.person.phone, c.person.idNumber].some((s) =>
-            s.toLocaleLowerCase().includes(q),
+            digits(s).toLocaleLowerCase().includes(q),
           ),
         )}
         keyExtractor={(c) => c.id}
@@ -42,7 +46,9 @@ export default function Customers() {
                   borderRadius: 18,
                 }}
               >
-                <Icon name="account-outline" />
+                <Txt bold color={colors.green} size={20}>
+                  {item.person.name.slice(0, 1)}
+                </Txt>
               </View>
               <View style={{ flex: 1 }}>
                 <Txt bold>{item.person.name}</Txt>
@@ -53,10 +59,9 @@ export default function Customers() {
                   {item.person.idNumber}
                 </Txt>
               </View>
-              <Button
-                small
-                secondary
-                label="+"
+              <IconButton
+                icon="plus"
+                label={t("newRecord")}
                 onPress={() =>
                   router.push({
                     pathname: "/new-record",

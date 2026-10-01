@@ -1,5 +1,112 @@
 import type { Language } from "../domain/models";
+import { digits } from "../domain/validation";
 const copy = {
+  downloadPng: ["Download PNG", "PNG ډاونلوډ کړئ", "دانلود PNG"],
+  savePicture: [
+    "Save as picture",
+    "د انځور په توګه خوندي کړئ",
+    "ذخیره به‌صورت تصویر",
+  ],
+  imageSaved: [
+    "Form pictures saved to your chosen folder.",
+    "د فورمې انځورونه په ټاکلي فولډر کې خوندي شول.",
+    "تصاویر فورم در پوشه انتخاب‌شده ذخیره شدند.",
+  ],
+  imageReady: [
+    "Your form picture is ready to download.",
+    "د فورمې انځور ډاونلوډ ته چمتو دی.",
+    "تصویر فورم آماده دانلود است.",
+  ],
+  imageNativeRequired: [
+    "Install the updated Android development build to save form pictures.",
+    "د فورمې انځور ساتلو لپاره د Android تازه پراختیايي نسخه نصب کړئ.",
+    "برای ذخیره تصویر فورم، نسخه توسعه جدید Android را نصب کنید.",
+  ],
+  imageExportFailed: [
+    "Could not create the form picture. Please try again.",
+    "د فورمې انځور جوړ نه شو. بیا هڅه وکړئ.",
+    "تصویر فورم ساخته نشد. دوباره تلاش کنید.",
+  ],
+  imageTooLarge: [
+    "This form is too long for one picture. Please save it as a PDF.",
+    "دا فورمه د یوه انځور لپاره ډېره اوږده ده. د PDF په توګه یې خوندي کړئ.",
+    "این فورم برای یک تصویر بسیار طولانی است. آن را به‌صورت PDF ذخیره کنید.",
+  ],
+  fillDemoData: ["Fill demo data", "بېلګه معلومات ډک کړئ", "درج اطلاعات نمونه"],
+  demoFillHint: [
+    "Fill this step with fictional details. You can edit them before continuing.",
+    "دا پړاو په بېلګه معلوماتو ډک کړئ. د دوام مخکې یې بدلولی شئ.",
+    "این مرحله را با اطلاعات فرضی پر کنید. پیش از ادامه می‌توانید آن‌ها را ویرایش کنید.",
+  ],
+  demoFillReviewHint: [
+    "Replace phone and customer details with a complete demo, ready to save.",
+    "د موبایل او پېرودونکي معلومات په بشپړې بېلګې بدل کړئ، د ثبت لپاره چمتو.",
+    "مشخصات موبایل و مشتری را با یک نمونه کامل و آماده ذخیره جایگزین کنید.",
+  ],
+  modelRequired: [
+    "Enter the phone model to continue.",
+    "د دوام لپاره د موبایل ماډل ولیکئ.",
+    "برای ادامه، مدل موبایل را وارد کنید.",
+  ],
+  customerRequired: [
+    "Enter the customer’s name and tazkira number.",
+    "د پېرودونکي نوم او د تذکرې شمېره ولیکئ.",
+    "نام مشتری و شماره تذکره را وارد کنید.",
+  ],
+  clearSearch: ["Clear search", "لټون پاک کړئ", "پاک کردن جستجو"],
+
+  welcomeBack: [
+    "Welcome to your shop",
+    "خپل دوکان ته ښه راغلاست",
+    "به دکان خود خوش آمدید",
+  ],
+  nextDeal: [
+    "A new deal. All sorted.",
+    "نوې معامله، منظم ثبت.",
+    "معامله جدید، ثبت منظم.",
+  ],
+  buyHint: ["Record a purchase", "پېرود ثبت کړئ", "ثبت یک خرید"],
+  sellHint: ["Record a sale", "پلور ثبت کړئ", "ثبت یک فروش"],
+  overview: ["Your day at a glance", "ستاسو د ورځې لنډیز", "خلاصه روز شما"],
+  demoMode: ["Demo mode", "ازمایښتي حالت", "حالت آزمایشی"],
+  quickStart: ["Start with a scan", "له سکین سره پیل کړئ", "با اسکن شروع کنید"],
+  scanIntro: [
+    "Less typing. More time for customers.",
+    "لږ لیکل، پېرودونکو ته ډېر وخت.",
+    "تایپ کمتر، وقت بیشتر برای مشتریان.",
+  ],
+  moreDetails: ["Additional details", "نور معلومات", "مشخصات بیشتر"],
+  personExtra: [
+    "Family, address & other details",
+    "کورنۍ، پته او نور معلومات",
+    "خانواده، آدرس و سایر مشخصات",
+  ],
+  phoneExtra: [
+    "Colour, storage & condition",
+    "رنګ، حافظه او حالت",
+    "رنگ، حافظه و وضعیت",
+  ],
+  preferences: ["Make it yours", "خپلې خوښې تنظیمات", "تنظیمات دلخواه شما"],
+  savedCustomers: [
+    "Familiar faces, faster records.",
+    "پخواني پېرودونکي، چټک ثبت.",
+    "مشتریان آشنا، ثبت سریع‌تر.",
+  ],
+  recordsHint: [
+    "Every deal, right here.",
+    "ټولې معاملې، همدلته.",
+    "همه معاملات، همین‌جا.",
+  ],
+  filters: ["Filter by date", "د نېټې له مخې چاڼ", "فیلتر براساس تاریخ"],
+  autoSaved: [
+    "Your draft saves automatically",
+    "ستاسو مسوده په اوتومات ډول ساتل کېږي",
+    "پیش‌نویس شما خودکار ذخیره می‌شود",
+  ],
+  essentials: ["The essentials", "اړین معلومات", "مشخصات اصلی"],
+  step: ["Step", "پړاو", "مرحله"],
+  of: ["of", "له", "از"],
+
   deviceLockRequired: [
     "Set a device PIN, password or biometric before using offline records.",
     "د آفلاین ثبتونو لپاره د موبایل پټنوم یا د ګوتې قفل وټاکئ.",
@@ -313,5 +420,5 @@ const copy = {
 } as const;
 export type TextKey = keyof typeof copy;
 export function translate(language: Language, key: TextKey): string {
-  return copy[key][language === "en" ? 0 : language === "ps" ? 1 : 2];
+  return digits(copy[key][language === "en" ? 0 : language === "ps" ? 1 : 2]);
 }

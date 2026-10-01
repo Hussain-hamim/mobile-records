@@ -6,6 +6,9 @@ import {
   Button,
   Card,
   Field,
+  Icon,
+  SectionTitle,
+  colors,
   Heading,
   Notice,
   Row,
@@ -15,7 +18,10 @@ import {
 } from "../../components/ui";
 import { PersonFields } from "../../components/person-fields";
 import { printRecord } from "../../services/printing";
-import { formatDate } from "../../domain/format";
+import type { FormPicture } from "../../services/form-image-types";
+import { FormPicturePreview } from "../../components/form-picture-preview";
+import { saveFormImage } from "../../services/form-image";
+import { formatDate, formatMoney } from "../../domain/format";
 import type { Transaction } from "../../domain/models";
 export default function RecordDetail() {
   const app = useApp();
@@ -29,9 +35,12 @@ export default function RecordDetail() {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [picture, setPicture] = useState<FormPicture | null>(null);
   async function run(fn: () => Promise<void>) {
     setBusy(true);
     setError("");
+    setMessage("");
     try {
       await fn();
     } catch (e) {
@@ -63,19 +72,39 @@ export default function RecordDetail() {
           />
         }
       />
+      <FormPicturePreview picture={picture} onClose={() => setPicture(null)} />
       <Notice message={error} tone="error" />
+      <Notice message={message} />
       <Notice message={t("draftForm")} />
-      <Card>
-        <Txt muted>
-          {t(record.direction === "buy" ? "bought" : "sold")} ·{" "}
-          {t(op?.state ?? record.syncState)}
-        </Txt>
-        <Txt bold size={27}>
+      <Card style={{ backgroundColor: colors.navy, borderColor: colors.navy }}>
+        <Row style={{ justifyContent: "space-between", marginBottom: 20 }}>
+          <View
+            style={{
+              backgroundColor: "#41455F",
+              padding: 12,
+              borderRadius: 16,
+            }}
+          >
+            <Icon name="cellphone-check" color={colors.lime} size={29} />
+          </View>
+          <View>
+            <Txt size={12} color="#D6DAEF">
+              {t(record.direction === "buy" ? "bought" : "sold")}
+            </Txt>
+            <Txt size={11} color={colors.lime}>
+              {app.demo ? t("demoMode") : t(op?.state ?? record.syncState)}
+            </Txt>
+          </View>
+        </Row>
+        <Txt bold size={26} color="#fff">
           {record.phone.brand} {record.phone.model}
         </Txt>
-        <Txt size={23} bold>
-          {record.price} AFN
+        <Txt size={30} bold color={colors.lime} style={{ marginTop: 8 }}>
+          {formatMoney(record.price, app.language)}
         </Txt>
+      </Card>
+      <Card>
+        <SectionTitle title={t("phoneDetails")} icon="cellphone" />
         {Object.entries(record.phone)
           .filter(([, v]) => v)
           .map(([k, v]) => (
@@ -87,13 +116,22 @@ export default function RecordDetail() {
                 {t(k as keyof typeof record.phone)}
               </Txt>
               <View style={{ flex: 1 }}>
-                <Txt size={13}>{v}</Txt>
+                <Txt
+                  size={13}
+                  style={
+                    k.startsWith("imei")
+                      ? { writingDirection: "ltr" }
+                      : undefined
+                  }
+                >
+                  {v}
+                </Txt>
               </View>
             </Row>
           ))}
       </Card>
       <Card>
-        <Txt bold>{t("customerDetails")}</Txt>
+        <SectionTitle title={t("customerDetails")} icon="account-outline" />
         {Object.entries(record.customer)
           .filter(([, v]) => v)
           .map(([k, v]) => (
@@ -128,6 +166,26 @@ export default function RecordDetail() {
           }
         />
       </Row>
+      <View style={{ marginTop: 12 }}>
+        <Button
+          label={t("savePicture")}
+          secondary
+          icon="image-outline"
+          loading={busy}
+          onPress={() =>
+            void run(async () => {
+              const result = await saveFormImage(
+                record,
+                app.language,
+                app.gregorian,
+                undefined,
+                setPicture,
+              );
+              if (result) setMessage(t(result));
+            })
+          }
+        />
+      </View>
       <View style={{ height: 22 }} />
       {corrections.length ? (
         <Card>
@@ -142,6 +200,7 @@ export default function RecordDetail() {
                 small
                 secondary
                 label={t("print")}
+                disabled={busy}
                 onPress={() =>
                   void run(() =>
                     printRecord(
@@ -154,6 +213,27 @@ export default function RecordDetail() {
                   )
                 }
               />
+              <View style={{ marginTop: 8 }}>
+                <Button
+                  small
+                  secondary
+                  icon="image-outline"
+                  label={t("savePicture")}
+                  disabled={busy}
+                  onPress={() =>
+                    void run(async () => {
+                      const result = await saveFormImage(
+                        a.snapshot,
+                        app.language,
+                        app.gregorian,
+                        a.reason,
+                        setPicture,
+                      );
+                      if (result) setMessage(t(result));
+                    })
+                  }
+                />
+              </View>
             </View>
           ))}
         </Card>

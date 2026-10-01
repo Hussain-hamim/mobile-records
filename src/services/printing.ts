@@ -1,9 +1,8 @@
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
-import { Asset } from "expo-asset";
 import { File } from "expo-file-system";
 import type { Language, Transaction } from "../domain/models";
-import { formHtml } from "../domain/print-template";
+import { recordHtml } from "./form-document";
 export async function printRecord(
   record: Transaction,
   language: Language,
@@ -11,16 +10,7 @@ export async function printRecord(
   share = false,
   correction?: string,
 ) {
-  const font = await Asset.fromModule(
-    require("../../assets/fonts/NotoSansArabic.ttf"),
-  ).downloadAsync();
-  const html = formHtml(
-    record,
-    language,
-    await new File(font.localUri!).base64(),
-    gregorian,
-    correction,
-  );
+  const html = await recordHtml(record, language, gregorian, correction);
   if (!share) {
     await Print.printAsync({ html });
     return;

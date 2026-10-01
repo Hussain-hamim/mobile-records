@@ -4,6 +4,9 @@ import { router } from "expo-router";
 import { useApp } from "../../state/app-context";
 import {
   Button,
+  SearchField,
+  Disclosure,
+  Txt,
   Chip,
   Empty,
   Field,
@@ -33,10 +36,21 @@ export default function Records() {
     <Screen scroll={false}>
       <Heading
         title={t("records")}
-        subtitle={`${records.length} ${t("allRecords")}`}
-        action={<Button label="+" onPress={() => router.push("/new-record")} />}
+        subtitle={t("recordsHint")}
+        action={
+          <Button
+            small
+            label={t("newRecord")}
+            icon="plus"
+            onPress={() => router.push("/new-record")}
+          />
+        }
       />
-      <Field label={t("search")} value={query} onChangeText={setQuery} />
+      <SearchField
+        placeholder={t("search")}
+        value={query}
+        onChangeText={setQuery}
+      />
       <Row style={{ marginBottom: 15 }}>
         {(["all", "buy", "sell"] as const).map((k) => (
           <Chip
@@ -47,13 +61,18 @@ export default function Records() {
           />
         ))}
       </Row>
-      <Field
-        label={`${t("date")} · YYYY-MM-DD`}
-        value={date}
-        onChangeText={setDate}
-        numeric
-        placeholder="2026-10-01"
-      />
+      <Disclosure title={t("filters")} icon="calendar-range">
+        <Field
+          label={`${t("date")} · YYYY-MM-DD`}
+          value={date}
+          onChangeText={setDate}
+          numeric
+          placeholder="2026-10-01"
+        />
+      </Disclosure>
+      <Txt muted size={12} style={{ marginTop: 12, marginBottom: 12 }}>
+        {filtered.length} {t("records")}
+      </Txt>
       <FlatList
         data={filtered}
         keyExtractor={(r) => r.id}

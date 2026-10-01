@@ -10,7 +10,12 @@ const native = requireOptionalNativeModule<{
 export const canRecognize = !!native;
 const scans = () => new Directory(Paths.cache, "record-scans");
 export async function cleanupScans() {
-  for (const name of ["record-scans", "Camera", "ImageManipulator"]) {
+  for (const name of [
+    "record-scans",
+    "Camera",
+    "ImageManipulator",
+    "form-exports",
+  ]) {
     const folder = new Directory(Paths.cache, name);
     if (folder.exists) folder.delete();
   }

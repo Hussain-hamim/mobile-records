@@ -1,12 +1,11 @@
-import { View, Pressable } from "react-native";
+import { View, Pressable, StyleSheet } from "react-native";
 import { router } from "expo-router";
 import { useApp } from "../../state/app-context";
 import {
   Card,
   Button,
-  Heading,
   Icon,
-  Notice,
+  IconButton,
   Row,
   Screen,
   Txt,
@@ -17,118 +16,185 @@ import { RecordRow } from "../../components/record-row";
 import { formatDate, localDay } from "../../domain/format";
 export default function Home() {
   const app = useApp();
-  const { t } = app;
+  const { t, rtl } = app;
   const today = app.records.filter(
     (r) => localDay(r.occurredAt) === localDay(new Date().toISOString()),
   );
   return (
     <Screen>
-      <Row style={{ justifyContent: "space-between", marginBottom: 24 }}>
+      <Row style={{ justifyContent: "space-between", marginBottom: 28 }}>
+        <Row style={{ flex: 1 }}>
+          <View style={styles.brand}>
+            <Icon name="cellphone-check" color="#fff" size={25} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Txt size={16} bold>
+              {t("app")}
+            </Txt>
+            <Txt size={11} muted>
+              {formatDate(
+                new Date().toISOString(),
+                app.language,
+                app.gregorian,
+              )}
+            </Txt>
+          </View>
+        </Row>
+        <IconButton
+          label={t("settings")}
+          icon="storefront-outline"
+          onPress={() => router.push("/settings")}
+        />
+      </Row>
+      <Row style={{ justifyContent: "space-between", marginBottom: 4 }}>
+        <Txt size={12} muted>
+          {t("welcomeBack")}
+        </Txt>
+        {app.demo ? (
+          <View style={styles.demo}>
+            <View style={styles.dot} />
+            <Txt size={10} color={colors.green} bold>
+              {t("demoMode")}
+            </Txt>
+          </View>
+        ) : null}
+      </Row>
+      <Txt size={32} bold style={{ marginBottom: 6 }}>
+        {app.membership?.profile.shopName || t("home")}
+      </Txt>
+      <Txt size={14} muted style={{ marginBottom: 24 }}>
+        {t("nextDeal")}
+      </Txt>
+      <Row style={{ gap: 12, alignItems: "stretch", marginBottom: 16 }}>
+        {(["buy", "sell"] as const).map((direction) => {
+          const buy = direction === "buy";
+          return (
+            <Pressable
+              key={direction}
+              accessibilityRole="button"
+              accessibilityLabel={t(direction)}
+              onPress={() =>
+                router.push({ pathname: "/new-record", params: { direction } })
+              }
+              style={({ pressed }) => [
+                styles.action,
+                {
+                  backgroundColor: buy ? colors.green : colors.peach,
+                  transform: [{ scale: pressed ? 0.97 : 1 }],
+                },
+              ]}
+            >
+              <Row
+                style={{ justifyContent: "space-between", marginBottom: 28 }}
+              >
+                <View
+                  style={[
+                    styles.actionIcon,
+                    { backgroundColor: buy ? "#FFFFFF26" : "#FFFFFF77" },
+                  ]}
+                >
+                  <Icon
+                    name={buy ? "arrow-bottom-left" : "arrow-top-right"}
+                    color={buy ? "#fff" : colors.ink}
+                    size={27}
+                  />
+                </View>
+                <Icon
+                  name="plus"
+                  size={18}
+                  color={buy ? "#C6C8FF" : "#AD7656"}
+                />
+              </Row>
+              <Txt size={20} bold color={buy ? "#fff" : colors.ink}>
+                {t(direction)}
+              </Txt>
+              <Txt
+                size={11}
+                color={buy ? "#E0E1FF" : "#774D3A"}
+                style={{ marginTop: 5 }}
+              >
+                {t(buy ? "buyHint" : "sellHint")}
+              </Txt>
+            </Pressable>
+          );
+        })}
+      </Row>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t("quickStart")}
+        onPress={() =>
+          router.push({ pathname: "/new-record", params: { scan: "imei" } })
+        }
+        style={({ pressed }) => [styles.scan, { opacity: pressed ? 0.75 : 1 }]}
+      >
         <Row>
           <View
             style={{
-              backgroundColor: colors.green,
+              backgroundColor: colors.lime,
               padding: 10,
               borderRadius: 14,
             }}
           >
-            <Icon name="cellphone-check" color="#fff" />
+            <Icon name="barcode-scan" color={colors.ink} size={24} />
           </View>
-          <Txt bold size={14}>
-            {t("app")}
-          </Txt>
+          <View style={{ flex: 1 }}>
+            <Txt bold size={14}>
+              {t("quickStart")}
+            </Txt>
+            <Txt muted size={11}>
+              {t("scanIntro")}
+            </Txt>
+          </View>
+          <Icon
+            name={rtl ? "chevron-left" : "chevron-right"}
+            color={colors.muted}
+          />
         </Row>
-        <View
-          style={{
-            backgroundColor: colors.mint,
-            borderRadius: 30,
-            padding: 11,
-          }}
-        >
-          <Icon name="storefront-outline" color={colors.green} />
-        </View>
-      </Row>
-      {app.demo ? <Notice message={t("demoBanner")} /> : null}
-      <Heading
-        title={app.membership?.profile.shopName || t("home")}
-        subtitle={formatDate(
-          new Date().toISOString(),
-          app.language,
-          app.gregorian,
-        )}
-      />
+      </Pressable>
       <Card
         style={{
-          backgroundColor: colors.green,
-          borderColor: colors.green,
-          padding: 24,
+          backgroundColor: colors.navy,
+          borderColor: colors.navy,
+          padding: 20,
+          marginBottom: 26,
         }}
       >
-        <Txt size={12} color="#BBD1C4">
-          {t("today")}
-        </Txt>
-        <Row style={{ justifyContent: "space-between", marginTop: 9 }}>
-          <View>
-            <Txt size={40} bold color="#fff">
-              {String(today.length).padStart(2, "0")}
-            </Txt>
-            <Txt size={12} color="#D4E2D9">
-              {t("records")}
-            </Txt>
-          </View>
-          <View style={{ height: 68, width: 1, backgroundColor: "#507464" }} />
-          <View>
-            <Txt size={20} bold color="#fff">
-              {today.filter((r) => r.direction === "buy").length}
-            </Txt>
-            <Txt size={11} color="#D4E2D9">
-              {t("bought")}
-            </Txt>
-          </View>
-          <View>
-            <Txt size={20} bold color="#fff">
-              {today.filter((r) => r.direction === "sell").length}
-            </Txt>
-            <Txt size={11} color="#D4E2D9">
-              {t("sold")}
-            </Txt>
-          </View>
+        <Row style={{ justifyContent: "space-between", marginBottom: 16 }}>
+          <Txt color="#D8DBF1" size={12}>
+            {t("overview")}
+          </Txt>
+          <Icon name="chart-timeline-variant" color={colors.lime} size={22} />
+        </Row>
+        <Row style={{ justifyContent: "space-between", gap: 6 }}>
+          {[
+            [String(today.length).padStart(2, "0"), t("records")],
+            [today.filter((r) => r.direction === "buy").length, t("bought")],
+            [today.filter((r) => r.direction === "sell").length, t("sold")],
+          ].map(([count, label], index) => (
+            <View
+              key={label}
+              style={{
+                flex: 1,
+                alignItems:
+                  index === 0 ? (rtl ? "flex-end" : "flex-start") : "center",
+                borderStartWidth: index ? 1 : 0,
+                borderColor: "#41455F",
+              }}
+            >
+              <Txt
+                size={index === 0 ? 30 : 26}
+                color={index === 0 ? colors.lime : "#fff"}
+                bold
+              >
+                {count}
+              </Txt>
+              <Txt size={11} color="#B7BCD5">
+                {label}
+              </Txt>
+            </View>
+          ))}
         </Row>
       </Card>
-      <Row style={{ marginTop: 5, marginBottom: 24 }}>
-        {(["buy", "sell"] as const).map((direction) => (
-          <Pressable
-            key={direction}
-            accessibilityRole="button"
-            accessibilityLabel={t(direction)}
-            onPress={() =>
-              router.push({ pathname: "/new-record", params: { direction } })
-            }
-            style={({ pressed }) => ({
-              flex: 1,
-              backgroundColor: direction === "buy" ? colors.mint : colors.pale,
-              borderRadius: 19,
-              padding: 21,
-              opacity: pressed ? 0.8 : 1,
-            })}
-          >
-            <Icon
-              name={
-                direction === "buy" ? "arrow-bottom-left" : "arrow-top-right"
-              }
-              size={30}
-              color={direction === "buy" ? colors.green : colors.amber}
-            />
-            <View style={{ height: 13 }} />
-            <Txt bold size={17}>
-              {t(direction)}
-            </Txt>
-            <Txt size={11} muted>
-              {t("newRecord")}
-            </Txt>
-          </Pressable>
-        ))}
-      </Row>
       {app.drafts.length ? (
         <View style={{ marginBottom: 20 }}>
           <Button
@@ -144,43 +210,56 @@ export default function Home() {
           />
         </View>
       ) : null}
-      <Row style={{ justifyContent: "space-between", marginBottom: 4 }}>
-        <Txt bold size={18}>
+      <Row style={{ justifyContent: "space-between", marginBottom: 14 }}>
+        <Txt bold size={19}>
           {t("recent")}
         </Txt>
-        <Pressable onPress={() => router.push("/records")}>
-          <Txt size={12} color={colors.green}>
-            {t("allRecords")} →
-          </Txt>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push("/records")}
+          style={{ minHeight: 44, justifyContent: "center" }}
+        >
+          <Row style={{ gap: 4 }}>
+            <Txt size={12} color={colors.green} bold>
+              {t("allRecords")}
+            </Txt>
+            <Icon
+              name={rtl ? "arrow-left" : "arrow-right"}
+              size={16}
+              color={colors.green}
+            />
+          </Row>
         </Pressable>
       </Row>
       {app.records.length ? (
-        <Card style={{ paddingVertical: 0 }}>
-          {app.records.slice(0, 4).map((r) => (
-            <RecordRow record={r} key={r.id} />
-          ))}
-        </Card>
+        app.records.slice(0, 3).map((r) => <RecordRow record={r} key={r.id} />)
       ) : (
         <Empty title={t("empty")} hint={t("emptyHint")} />
       )}
-      <Row style={{ marginTop: 12 }}>
+      <Row style={{ marginTop: 18, paddingHorizontal: 4 }}>
         <Icon
           name={
-            app.operations.length
-              ? "cloud-upload-outline"
-              : "cloud-check-outline"
+            app.demo
+              ? "flask-outline"
+              : app.operations.length
+                ? "cloud-upload-outline"
+                : "cloud-check-outline"
           }
           size={20}
-          color={colors.muted}
+          color={app.demo ? colors.muted : colors.success}
         />
         <View style={{ flex: 1 }}>
-          <Txt size={12} bold>
-            {t(app.operations.length ? "pending" : "synced")}
-            {app.operations.length ? ` · ${app.operations.length}` : ""}
+          <Txt size={11} muted>
+            {app.demo
+              ? t("demoBanner")
+              : t(app.operations.length ? "pending" : "synced") +
+                (app.operations.length ? ` · ${app.operations.length}` : "")}
           </Txt>
-          <Txt size={10} muted>
-            {t("syncHint")}
-          </Txt>
+          {!app.demo ? (
+            <Txt size={11} muted>
+              {t("syncHint")}
+            </Txt>
+          ) : null}
         </View>
         {!app.demo ? (
           <Button
@@ -195,3 +274,39 @@ export default function Home() {
     </Screen>
   );
 }
+const styles = StyleSheet.create({
+  brand: {
+    backgroundColor: colors.green,
+    width: 46,
+    height: 46,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  demo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: colors.mint,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.green },
+  action: { flex: 1, borderRadius: 26, padding: 20 },
+  actionIcon: {
+    width: 43,
+    height: 43,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scan: {
+    borderRadius: 20,
+    backgroundColor: colors.paper,
+    borderWidth: 1,
+    borderColor: colors.line,
+    padding: 14,
+    marginBottom: 16,
+  },
+});

@@ -1,1 +1,11 @@
-{"platforms":["android"],"android":{"modules":["expo.modules.recordocr.RecordOcrModule"]}}
+{
+  "platforms": [
+    "android"
+  ],
+  "android": {
+    "modules": [
+      "expo.modules.recordocr.RecordOcrModule",
+      "expo.modules.recordocr.RecordExportModule"
+    ]
+  }
+}

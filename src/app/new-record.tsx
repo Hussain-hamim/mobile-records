@@ -15,6 +15,8 @@ import {
   Card,
   Chip,
   Field,
+  Disclosure,
+  SectionTitle,
   Heading,
   Icon,
   Notice,
@@ -26,7 +28,9 @@ import {
 } from "../components/ui";
 import { PersonFields } from "../components/person-fields";
 import { Scanner } from "../components/scanner";
+import { formatMoney } from "../domain/format";
 import { lookupTac } from "../services/tac";
+import { fillDemoStep } from "../domain/demo-data";
 export default function NewRecord() {
   const app = useApp();
   const { t } = app;
@@ -34,6 +38,7 @@ export default function NewRecord() {
     direction?: string;
     draft?: string;
     customer?: string;
+    scan?: string;
   }>();
   const [draft, setDraft] = useState<Draft>(
     () =>
@@ -51,7 +56,9 @@ export default function NewRecord() {
         step: 0,
       },
   );
-  const [scanner, setScanner] = useState<"id" | "imei" | null>(null);
+  const [scanner, setScanner] = useState<"id" | "imei" | null>(
+    params.scan === "imei" ? "imei" : null,
+  );
   const [imeiTarget, setImeiTarget] = useState<"imei1" | "imei2">("imei1");
   const [choosing, setChoosing] = useState(false);
   const [error, setError] = useState("");
@@ -89,6 +96,13 @@ export default function NewRecord() {
   }
   function phone(key: keyof Phone, value: string) {
     setDraft((d) => ({ ...d, phone: { ...d.phone, [key]: value } }));
+  }
+  function fillDemo() {
+    if (!app.demo) return;
+    setDraft(fillDemoStep);
+    setError("");
+    setHint("");
+    setChoosing(false);
   }
   const history = app.records.filter(
     (r) =>
@@ -128,6 +142,26 @@ export default function NewRecord() {
       setBusy(false);
     }
   }
+  function advance() {
+    const errors = validateDraft(draft);
+    const issue =
+      draft.step === 0
+        ? errors.find((e) =>
+            ["invalidImei", "invalidSecondImei", "invalidPrice"].includes(e),
+          ) || (!draft.phone.model.trim() ? "modelRequired" : "")
+        : !draft.customer.name.trim() || !draft.customer.idNumber.trim()
+          ? "customerRequired"
+          : !draft.customerConfirmed
+            ? "confirmCustomer"
+            : "";
+    if (issue) {
+      setError(errorText(new Error(issue), t));
+      return;
+    }
+    setError("");
+    setHint("");
+    patch({ step: draft.step + 1 });
+  }
   async function finish() {
     setBusy(true);
     setError("");
@@ -146,7 +180,7 @@ export default function NewRecord() {
     }
   }
   return (
-    <Screen>
+    <Screen resetKey={`${draft.step}:${error}`}>
       <Heading
         title={t("newRecord")}
         subtitle={t(draft.direction)}
@@ -159,20 +193,22 @@ export default function NewRecord() {
           />
         }
       />
-      <Row style={{ marginBottom: 20 }}>
+      <Row style={{ marginBottom: 24 }}>
         {(["phoneDetails", "customerDetails", "review"] as const).map(
           (k, i) => (
             <View
               key={k}
               style={{
                 flex: 1,
-                borderTopWidth: 3,
+                borderTopWidth: 4,
+                borderRadius: 3,
                 borderColor: draft.step >= i ? colors.green : colors.line,
                 paddingTop: 8,
               }}
             >
               <Txt
-                size={11}
+                size={12}
+                bold
                 color={draft.step >= i ? colors.green : colors.muted}
               >
                 {i + 1}. {t(k)}
@@ -183,6 +219,21 @@ export default function NewRecord() {
       </Row>
       <Notice message={error} tone="error" />
       <Notice message={hint} />
+      {app.demo ? (
+        <View style={{ marginBottom: 20, gap: 8 }}>
+          <Button
+            small
+            secondary
+            icon="auto-fix"
+            label={t("fillDemoData")}
+            disabled={busy}
+            onPress={fillDemo}
+          />
+          <Txt size={11} muted style={{ textAlign: "center" }}>
+            {t(draft.step === 2 ? "demoFillReviewHint" : "demoFillHint")}
+          </Txt>
+        </View>
+      ) : null}
       {draft.step === 0 ? (
         <>
           <Row style={{ marginBottom: 20 }}>
@@ -198,10 +249,14 @@ export default function NewRecord() {
             />
           </Row>
           <Card>
+            <SectionTitle
+              title={t("scanImei")}
+              hint={t("scanIntro")}
+              icon="barcode-scan"
+            />
             <Row style={{ marginBottom: 20 }}>
               <View style={{ flex: 1 }}>
                 <Button
-                  secondary
                   icon="barcode-scan"
                   label={t("scanImei")}
                   onPress={() => {
@@ -250,24 +305,13 @@ export default function NewRecord() {
             ) : null}
           </Card>
           <Card>
-            {(
-              [
-                "brand",
-                "model",
-                "color",
-                "simCount",
-                "storage",
-                "ram",
-                "condition",
-                "notes",
-              ] as const
-            ).map((k) => (
+            <SectionTitle title={t("essentials")} icon="cellphone" />
+            {(["brand", "model"] as const).map((k) => (
               <Field
                 key={k}
                 label={t(k) + (k === "model" ? " *" : "")}
                 value={draft.phone[k]}
                 onChangeText={(v) => phone(k, v)}
-                multiline={k === "notes"}
               />
             ))}
             <Field
@@ -277,6 +321,30 @@ export default function NewRecord() {
               keyboardType="decimal-pad"
               numeric
             />
+            <Disclosure
+              title={t("moreDetails")}
+              hint={t("phoneExtra")}
+              icon="tune-variant"
+            >
+              {(
+                [
+                  "color",
+                  "simCount",
+                  "storage",
+                  "ram",
+                  "condition",
+                  "notes",
+                ] as const
+              ).map((k) => (
+                <Field
+                  key={k}
+                  label={t(k)}
+                  value={draft.phone[k]}
+                  onChangeText={(v) => phone(k, v)}
+                  multiline={k === "notes"}
+                />
+              ))}
+            </Disclosure>
           </Card>
         </>
       ) : null}
@@ -327,6 +395,7 @@ export default function NewRecord() {
           ) : null}
           <View style={{ height: 16 }} />
           <Card>
+            <SectionTitle title={t("customerDetails")} icon="account-outline" />
             <PersonFields
               value={draft.customer}
               onChange={(customer) =>
@@ -334,6 +403,12 @@ export default function NewRecord() {
               }
             />
             <Pressable
+              style={{
+                marginTop: 20,
+                padding: 14,
+                backgroundColor: colors.mint,
+                borderRadius: 14,
+              }}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: draft.customerConfirmed }}
               onPress={() =>
@@ -361,19 +436,21 @@ export default function NewRecord() {
         <>
           <Notice message={t("draftForm")} />
           <Card>
-            <Txt muted size={12}>
-              {t("phoneDetails")}
-            </Txt>
+            <SectionTitle title={t("phoneDetails")} icon="cellphone" />
             <Txt bold size={23}>
               {draft.phone.brand} {draft.phone.model}
             </Txt>
-            <Txt>{draft.phone.imei1}</Txt>
+            <Txt style={{ writingDirection: "ltr", marginTop: 8 }}>
+              {draft.phone.imei1}
+            </Txt>
             {draft.phone.imei2 ? <Txt>{draft.phone.imei2}</Txt> : null}
             <Txt muted>
-              {draft.phone.color} · {draft.phone.storage} · {draft.phone.ram}
+              {[draft.phone.color, draft.phone.storage, draft.phone.ram]
+                .filter(Boolean)
+                .join(" · ")}
             </Txt>
-            <Txt bold size={22}>
-              {draft.price} AFN
+            <Txt bold size={26} color={colors.green} style={{ marginTop: 14 }}>
+              {formatMoney(draft.price, app.language)}
             </Txt>
           </Card>
           <Card>
@@ -406,19 +483,33 @@ export default function NewRecord() {
           <Button
             label={t("back")}
             secondary
-            onPress={() => patch({ step: draft.step - 1 })}
+            onPress={() => {
+              setError("");
+              setHint("");
+              patch({ step: draft.step - 1 });
+            }}
           />
         ) : null}
         <View style={{ flex: 1 }}>
           <Button
             label={t(draft.step === 2 ? "saveRecord" : "next")}
             loading={busy}
-            icon={draft.step === 2 ? "check" : "arrow-right"}
-            onPress={() =>
-              draft.step === 2 ? void finish() : patch({ step: draft.step + 1 })
+            icon={
+              draft.step === 2
+                ? "check"
+                : app.rtl
+                  ? "arrow-left"
+                  : "arrow-right"
             }
+            onPress={() => (draft.step === 2 ? void finish() : advance())}
           />
         </View>
+      </Row>
+      <Row style={{ justifyContent: "center", marginTop: 16 }}>
+        <Icon name="cloud-check-outline" size={16} color={colors.muted} />
+        <Txt size={11} muted>
+          {t("autoSaved")}
+        </Txt>
       </Row>
       {scanner ? (
         <Scanner

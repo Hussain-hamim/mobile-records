@@ -36,7 +36,7 @@ export function AuthScreen() {
   }
   return (
     <Screen>
-      <View style={{ paddingTop: 28, paddingBottom: 36 }}>
+      <View style={{ paddingTop: 18, paddingBottom: 26 }}>
         <Row style={{ justifyContent: "space-between" }}>
           <View
             style={{
@@ -47,10 +47,15 @@ export function AuthScreen() {
           >
             <Icon name="cellphone-check" size={28} color="#fff" />
           </View>
-          <Chip label="ANDROID · V1" />
+          <Icon name="shield-check-outline" size={28} color={colors.green} />
         </Row>
         <View style={{ height: 35 }} />
-        <Heading title={t("app")} subtitle={t("tagline")} />
+        <Txt size={38} bold style={{ marginBottom: 12 }}>
+          {t("app")}
+        </Txt>
+        <Txt size={17} muted style={{ marginBottom: 24 }}>
+          {t("tagline")}
+        </Txt>
         <Row>
           {(["ps", "fa", "en"] as const).map((l) => (
             <Chip
