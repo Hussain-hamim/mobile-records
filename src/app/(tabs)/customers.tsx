@@ -1,3 +1,4 @@
+import { FingerprintSearch } from "../../components/fingerprint-search";
 import { useState } from "react";
 import { digits } from "../../domain/validation";
 import { FlatList, View } from "react-native";
@@ -5,6 +6,7 @@ import { router } from "expo-router";
 import { useApp } from "../../state/app-context";
 import {
   IconButton,
+  Button,
   Card,
   Empty,
   SearchField,
@@ -26,6 +28,7 @@ export default function Customers() {
         value={query}
         onChangeText={setQuery}
       />
+      <FingerprintSearch onManual={() => {}} />
       <Txt size={12} muted style={{ marginBottom: 16 }}>
         {customers.length} {t("customers")}
       </Txt>
@@ -59,6 +62,18 @@ export default function Customers() {
                   {item.person.idNumber}
                 </Txt>
               </View>
+              <Button
+                small
+                secondary
+                icon="account-outline"
+                label={t("viewCustomer")}
+                onPress={() =>
+                  router.push({
+                    pathname: "/customer/[id]",
+                    params: { id: item.id },
+                  })
+                }
+              />
               <IconButton
                 icon="plus"
                 label={t("newRecord")}

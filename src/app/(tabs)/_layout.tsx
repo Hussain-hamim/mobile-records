@@ -1,8 +1,8 @@
 import { Tabs } from "expo-router";
-import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { colors, Icon, scriptFont, type IconName } from "../../components/ui";
 import { useApp } from "../../state/app-context";
-import { colors, Icon, type IconName } from "../../components/ui";
 
 const tabColors = {
   background: "#E5E7F6",
@@ -31,7 +31,7 @@ function TabIcon({
 }
 
 export default function Layout() {
-  const { t, rtl } = useApp();
+  const { t, rtl, language } = useApp();
   const insets = useSafeAreaInsets();
   const { width, fontScale } = useWindowDimensions();
   return (
@@ -64,7 +64,8 @@ export default function Layout() {
               focused && styles.activeLabel,
               {
                 writingDirection: rtl ? "rtl" : "ltr",
-                fontFamily: rtl ? "Noto" : undefined,
+                fontFamily: scriptFont(language),
+                fontWeight: language === "ps" ? "normal" : focused ? "700" : "400",
               },
             ]}
           >
@@ -160,7 +161,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.green,
   },
   label: {
-    fontFamily: "Noto",
     fontSize: 11,
     lineHeight: 21,
     textAlign: "center",

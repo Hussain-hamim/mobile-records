@@ -72,6 +72,17 @@ export default function RecordDetail() {
           />
         }
       />
+      <Button
+        secondary
+        icon="account-outline"
+        label={t("viewCustomer")}
+        onPress={() =>
+          router.push({
+            pathname: "/customer/[id]",
+            params: { id: record.customerId },
+          })
+        }
+      />
       <FormPicturePreview picture={picture} onClose={() => setPicture(null)} />
       <Notice message={error} tone="error" />
       <Notice message={message} />

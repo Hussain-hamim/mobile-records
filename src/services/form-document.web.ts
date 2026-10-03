@@ -9,7 +9,9 @@ export async function recordHtml(
   correction?: string,
 ) {
   const font = Asset.fromModule(
-    require("../../assets/fonts/NotoSansArabic.ttf"),
+    language === "ps"
+      ? require("../../assets/fonts/BahijBaraem-Regular.ttf")
+      : require("../../assets/fonts/NotoSansArabic.ttf"),
   );
   const response = await fetch(font.uri);
   if (!response.ok) throw new Error("imageExportFailed");

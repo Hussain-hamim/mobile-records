@@ -61,7 +61,8 @@
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test tests/*.test.ts",
-    "assets:prepare": "python3 scripts/prepare-assets.py"
+    "assets:prepare": "python3 scripts/prepare-assets.py",
+    "fingerprint:prepare": "python3 scripts/prepare-fingerprint.py"
   },
   "private": true,
   "expo": {

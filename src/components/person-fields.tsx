@@ -8,6 +8,9 @@ export const personKeys: (keyof Person)[] = [
   "idNumber",
   "idVolume",
   "idPage",
+  "dateOfBirth",
+  "gender",
+  "nationality",
   "originalAddress",
   "currentAddress",
   "phone",
@@ -29,7 +32,7 @@ export function PersonFields({
     <Field
       key={key}
       label={t(key) + (key === "name" || key === "idNumber" ? " *" : "")}
-      value={value[key]}
+      value={value[key] ?? ""}
       onChangeText={(text) => onChange({ ...value, [key]: text })}
       numeric={[
         "phone",

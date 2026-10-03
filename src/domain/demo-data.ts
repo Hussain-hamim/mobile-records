@@ -40,7 +40,14 @@ export function fillDemoStep(draft: Draft): Draft {
         }
       : {}),
     ...(draft.step === 1 || draft.step === 2
-      ? { customer: { ...customer }, customerId: "", customerConfirmed: true }
+      ? {
+          customer: { ...customer },
+          customerId: "",
+          customerConfirmed: true,
+          fingerprintTemplate: undefined,
+          fingerprints: [],
+          fingerprintSkip: { reason: "readerUnavailable", note: "Demo presentation" },
+        }
       : {}),
   };
 }

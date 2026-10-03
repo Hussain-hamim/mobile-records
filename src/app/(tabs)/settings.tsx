@@ -1,3 +1,4 @@
+import { FingerprintPrompt } from "../../components/fingerprint-prompt";
 import { useState } from "react";
 import { Switch, View } from "react-native";
 import { useApp } from "../../state/app-context";
@@ -24,6 +25,7 @@ import { PersonFields } from "../../components/person-fields";
 export default function Settings() {
   const app = useApp();
   const { t } = app;
+  const [reader, setReader] = useState(false);
   const [profile, setProfile] = useState(() => ({
     ...emptyShop(),
     ...app.membership?.profile,
@@ -80,6 +82,21 @@ export default function Settings() {
         </Row>
       </Card>
       <Notice message={message} />
+      <Card>
+        <Button
+          secondary
+          icon="usb"
+          label={t("fpReaderCheck")}
+          onPress={() => setReader(true)}
+        />
+      </Card>
+      {reader ? (
+        <FingerprintPrompt
+          mode="check"
+          templates={[]}
+          onClose={() => setReader(false)}
+        />
+      ) : null}
       <Card>
         <SectionTitle title={t("language")} icon="translate" />
         <Row style={{ marginVertical: 16 }}>
@@ -208,18 +225,35 @@ export default function Settings() {
                   {m.active ? "✓" : "—"}
                 </Txt>
                 {m.role === "staff" && m.active ? (
-                  <Button
-                    small
-                    secondary
-                    label={t("revoke")}
-                    disabled={busy}
-                    onPress={() =>
-                      void run(async () => {
-                        await manage("revoke", { userId: m.user_id });
-                        setStaff((await manage("list")).members);
-                      })
-                    }
-                  />
+                  <>
+                    <Button
+                      small
+                      secondary
+                      label={t("regenerateCode")}
+                      disabled={busy}
+                      onPress={() =>
+                        void run(async () => {
+                          setCredential("");
+                          const data = await manage("issue-code", {
+                            userId: m.user_id,
+                          });
+                          setCredential(data.phone + " · " + data.code);
+                        })
+                      }
+                    />
+                    <Button
+                      small
+                      secondary
+                      label={t("revoke")}
+                      disabled={busy}
+                      onPress={() =>
+                        void run(async () => {
+                          await manage("revoke", { userId: m.user_id });
+                          setStaff((await manage("list")).members);
+                        })
+                      }
+                    />
+                  </>
                 ) : null}
               </View>
             ))}
@@ -241,14 +275,14 @@ export default function Settings() {
                   const data = await manage("invite", {
                     phone: normalizePhone(phone),
                   });
-                  setCredential(data.password);
+                  setCredential(data.phone + " · " + data.code);
                   setPhone("");
                 })
               }
             />
             {credential ? (
               <View style={{ marginTop: 16 }}>
-                <Notice message={t("copied")} />
+                <Notice message={t("codeGenerated")} />
                 <Txt>{credential}</Txt>
                 <Button
                   small

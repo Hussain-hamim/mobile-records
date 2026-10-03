@@ -385,3 +385,13 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 
 [functions.manage-account]
 verify_jwt = false
+
+# JWTs are checked with auth.getUser in the handler, matching manage-account.
+[functions.read-tazkira]
+verify_jwt = false
+
+[functions.redeem-login-code]
+verify_jwt = false
+
+[functions.admin-accounts]
+verify_jwt = false

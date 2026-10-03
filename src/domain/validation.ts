@@ -55,8 +55,15 @@ export function validateDraft(draft: Draft): string[] {
     Number(digits(draft.price)) <= 0
   )
     errors.push("invalidPrice");
-  if (!draft.customerConfirmed) errors.push("confirmCustomer");
   return errors;
+}
+export function latestRecordForCustomer(
+  records: Transaction[],
+  customerId: string,
+): Transaction | undefined {
+  return records
+    .filter((record) => record.customerId === customerId)
+    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))[0];
 }
 export function matchesRecord(record: Transaction, query: string): boolean {
   const needle = digits(query).trim().toLocaleLowerCase();

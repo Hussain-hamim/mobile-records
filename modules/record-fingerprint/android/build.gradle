@@ -1,0 +1,19 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+group = 'expo.modules.recordfingerprint'
+version = '1.0.0'
+android {
+  namespace 'expo.modules.recordfingerprint'
+  defaultConfig {
+    versionCode 1
+    versionName '1.0.0'
+    consumerProguardFiles 'proguard-rules.pro'
+  }
+}
+dependencies {
+  implementation files('libs/zkandroidcore.jar')
+  implementation files('libs/zkandroidfpreader.jar')
+  implementation files('libs/zkandroidfingerservice.jar')
+}

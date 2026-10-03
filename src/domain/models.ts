@@ -14,6 +14,9 @@ export interface Person {
   relativePhone: string;
   idVolume: string;
   idPage: string;
+  dateOfBirth?: string;
+  gender?: string;
+  nationality?: string;
 }
 export interface ShopProfile extends Person {
   shopName: string;
@@ -33,6 +36,27 @@ export interface Phone {
   condition: string;
   notes: string;
 }
+export type FingerprintSlot = "primary" | "backup";
+export interface FingerprintEntry {
+  id: string;
+  slot: FingerprintSlot;
+  template: string;
+  enrolledAt: string | null;
+  enrolledBy: string | null;
+}
+export interface FingerprintAudit {
+  slot: FingerprintSlot;
+  action: "add" | "replace" | "remove";
+  reason: string;
+  at: string;
+  by: string;
+}
+export type FingerprintSkipReason =
+  "readerUnavailable" | "customerUnable" | "customerDeclined" | "otherReason";
+export interface FingerprintSkip {
+  reason: FingerprintSkipReason;
+  note: string;
+}
 export interface Draft {
   id: string;
   direction: Direction;
@@ -40,6 +64,9 @@ export interface Draft {
   customer: Person;
   customerId: string;
   customerConfirmed: boolean;
+  fingerprintTemplate?: string; // Legacy read compatibility only.
+  fingerprints?: FingerprintEntry[];
+  fingerprintSkip?: FingerprintSkip;
   price: string;
   createdAt: string;
   step: number;
@@ -47,6 +74,9 @@ export interface Draft {
 export interface Customer {
   id: string;
   person: Person;
+  fingerprintTemplate?: string; // Legacy read compatibility only.
+  fingerprints?: FingerprintEntry[];
+  fingerprintAudit?: FingerprintAudit[];
   version: number;
 }
 export interface Transaction {
@@ -62,6 +92,7 @@ export interface Transaction {
   price: string;
   currency: "AFN";
   occurredAt: string;
+  fingerprintSkip?: FingerprintSkip & { at: string; by: string };
   templateVersion: "draft-v1";
   syncState: SyncState;
 }
@@ -102,6 +133,9 @@ export const emptyPerson = (): Person => ({
   relativePhone: "",
   idVolume: "",
   idPage: "",
+  dateOfBirth: "",
+  gender: "",
+  nationality: "",
 });
 export const emptyPhone = (): Phone => ({
   brand: "",

@@ -1,6 +1,6 @@
-# Offline Afghan e-ID MRZ reader
+# Afghan e-ID recognition internals
 
-The tazkira scanner reads the three lines with `<` characters on the back of the electronic ID. It does not read the chip or use an API. Photographing an MRZ still needs optical character recognition: the native module uses its bundled English Tesseract model with a Latin MRZ character whitelist, followed by a deterministic local parser. General Pashto/Persian/English label extraction has been removed, along with the unused Pashto/Persian recognition models. The app's three UI languages remain available.
+The scanner reads only the three MRZ lines on the back of an Afghan electronic Tazkira. Capture crops to the visible MRZ guide and automatically runs the offline reader. There is no full-card printed-details mode, four-corner editor or front/back wizard. An optional, explicitly confirmed online MRZ retry can be configured later; it remains disabled in this workspace. See [TAZKIRA-SCANNING.md](TAZKIRA-SCANNING.md) for usage and setup.
 
 ## Data and validation
 
@@ -8,16 +8,20 @@ The tazkira scanner reads the three lines with `<` characters on the back of the
 
 The Afghan split-number mapping is based on the card supplied for this task: eight digits followed by a filler in the document-number field, its check digit, and five digits followed by ten fillers in the first optional-data field. The composite check covers those five digits. The resulting 13 digits are displayed as `0000-0000-00000`, preserving leading zeroes. This is an observed country-specific layout, not a claim that all Afghan issuances use it. Standard TD1 extended document numbers are also accepted when they yield a checksum-valid 13-digit number. Other layouts remain manual rather than yielding a truncated ID.
 
-Only the name and ID number become editable suggestions. Names have no check digit, use Latin transliteration and can be shortened by the card issuer. Staff must compare them to the card before accepting. Birth/expiry/sex/nationality/optional data are used transiently for parsing and validation, not added to the customer model. No relatives or addresses are guessed. No missing fillers or ambiguous glyphs are silently repaired. Conflicting successful reads require a retake.
+MRZ suggests only the name, full ID number, gender (`M`/`F`, omitted if unspecified), and nationality (`AFG`). Names have no check digit, use Latin transliteration and can be shortened. Birth-date century, relatives, addresses and missing characters are never inferred. Other person fields remain available for manual entry in the record form.
+
+Online results use this same parser and must pass every check; no general printed-text fallback is used. Staff review all suggested values before applying. Retrying the same crop preserves edited fields; retaking clears the prior scan.
 
 ## Native lifecycle
 
-An updated Android build is required because `RecordOcr.readMrz` is a new native method. Older builds and the browser show a manual-entry fallback. Native changes cannot be delivered through JavaScript hot reload alone.
+The Android build must include `RecordOcr.readMrzPass` and the bundled MRZ model. The narrow guide targets all three MRZ lines, with excluded pixels dimmed. Preview coordinates are mapped back through the camera's FILL_CENTER transform at shutter time. The selected pixels are saved before deleting the original image; the asynchronous file move is always awaited. Rotation, trimming, offline passes and optional online retry all use this selected crop, never the full camera image. Missing preview geometry fails capture safely.
 
-The reader tries automatic page segmentation, the lower part of a full-back photo, and a close-up block. It bounds bitmap size, serializes recognition/model installation, recycles image buffers and the engine, and never creates crop files. Model installation copies an asset from the APK into no-backup storage and requires no connection, including first use. All recognition text exists in memory only. Captures/rotation/trim files are app-private and removed after acceptance/cancellation; cancelling an in-progress read waits for native work to finish before cleanup and discards its result. Startup cleanup covers force-stop leftovers. No ID samples are added to the repository or test fixtures.
+The first pass uses the fast integer MRZ model with block segmentation. If validation fails, the second pass estimates and corrects up to 8 degrees of tilt and uses Sauvola adaptive thresholding; the final pass tries automatic layout within the selected area. No pass widens the selection. Processing stops immediately when checks pass or the scanner closes. Checksums are not weakened and missing characters are not guessed.
 
-## Verification and remaining device checks
+The packaged model is [DoubangoTelecom/tesseractMRZ](https://github.com/DoubangoTelecom/tesseractMRZ), pinned to `1e7adfecda5f3c9ae1fb12cf6b4b8c3958c63e46` with SHA-256 in the asset manifest. Its BSD-3-Clause notice is in `assets/licenses/MRZ-LICENSE`. English remains the separate IMEI model. Model installation copies assets from the APK into no-backup storage; no connection is needed on first use.
 
-Automated tests use synthetic IDs and the published ICAO check-digit example. They cover the Afghan split and standard extended formats, leading zeroes, changes to every numeric position, malformed/missing lines, unsupported documents, conflicting reads and minimal output fields.
+Bitmaps, cropped regions, corrected images and recognition text stay in memory/app-private cache. Every native call recycles its bitmaps, decoder and engine. Captures/rotation/trim files are removed after acceptance/cancellation; closing during native work discards the result and deletes files when that call finishes. No further fallback starts after cancellation. Startup removes force-stop leftovers. Development diagnostics contain only pass number, elapsed time and line lengths, never names, IDs, raw MRZ, paths or images. No user ID samples are committed.
 
-Run the [Android acceptance checklist](ANDROID-ACCEPTANCE.md) on a rebuilt app. In airplane mode from first launch, measure recognition against consented real samples (including the supplied card); check glare, camera orientation, denied permission, retry, crop, cancel, restart, file cleanup and network traffic. Parser tests alone do not establish camera recognition accuracy.
+## Verification
+
+Tests cover check digits, full Afghan ID mapping, leading zeroes, unsupported/malformed MRZs, conflicting reads, guide geometry, selected-area-only processing, cancellation and the asynchronous file-move regression. Run the Android acceptance checklist with consented real cards, glare/tilt, retry, airplane mode and cache cleanup. No real-card accuracy claim follows from synthetic tests alone. Live online testing remains pending configuration.

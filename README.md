@@ -1,6 +1,6 @@
 # Mobile Records
 
-Android-first Expo SDK 57 application for Afghan phone shops. Purchases and sales, reusable shop/customer details, encrypted offline records, per-shop synchronization, local IMEI/ENID scanning, and printable draft forms. Pashto, Dari and English are included.
+Android-first Expo SDK 57 application for Afghan phone shops. Purchases and sales, reusable shop/customer details, Supabase-backed records and private shop access, local IMEI/ENID scanning, and printable draft forms. Pashto, Dari and English are included.
 
 ## Try the screens
 
@@ -9,25 +9,27 @@ npm ci
 npm run web
 ```
 
-Choose **Explore demo**. The demo uses synthetic records in memory and never connects to Supabase. Browser refresh clears demo records. Production accounts and encrypted storage are Android-only. MRZ and printed-IMEI scanning require an updated Android development build; no mock scanning or simulated sync is shown as successful.
+Choose **Explore demo** for temporary sample data. Demo changes live only in memory and reset on app reload, on both Android and web. Signed-in Android accounts save directly to Supabase. MRZ and printed-IMEI scanning require an updated Android development build; no mock scanning or simulated sync is shown as successful.
 
 ## Configure the backend
 
+The browser administration portal is at **`/admin`**. Platform administrators can create shops, issue one-time login codes, inspect accounts, and suspend or restore access with an audit reason. It has a separate email/password login and server-side administrator allowlist. See [admin portal setup and usage](docs/ADMIN-PORTAL.md).
+
 1. Create a dedicated hosted Supabase project. Copy `.env.example` to `.env.local` and supply its URL and **publishable** key. Never expose a service-role key through `EXPO_PUBLIC_*`.
 2. Link the project with `supabase link --project-ref YOUR_PROJECT_REF`, review `supabase db push --dry-run`, then apply `supabase db push`.
-3. Disable public signups in hosted Auth settings (the local `supabase/config.toml` also disables them). Keep phone/password authentication enabled; no SMS delivery is needed for administrator-provisioned accounts.
-4. Deploy `supabase functions deploy manage-account`. Its gateway JWT check is disabled in config because the function authenticates every request itself using `auth.getUser(token)` before any operation, checks active membership, and restricts staff management to shop owners. Requests without a valid user token are rejected.
+3. Disable public signups in hosted Auth settings (the local `supabase/config.toml` also disables them). Keep the email Auth provider enabled for the server-side token exchange. The Phone provider and SMS delivery are not required. Users enter only a phone number and an administrator-issued code.
+4. Deploy `manage-account`, `admin-accounts`, and `redeem-login-code` with `supabase functions deploy <name>`. Gateway JWT checks are disabled because these handlers implement their own authentication: shop-owner membership, platform-administrator allowlist/trusted service credentials, or atomic one-time-code redemption respectively. See [login code administration](docs/LOGIN-CODES.md).
 5. On a trusted administrator workstation, supply `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` through environment variables, then run:
 
 ```sh
 node scripts/admin.mjs onboard +93700123456 "Example Mobile Shop"
 # Administrator-assisted recovery:
-node scripts/admin.mjs reset +93700123456
+node scripts/admin.mjs issue-code +93700123456
 ```
 
-The script prints a temporary password for private delivery. Owners/staff must replace it before accessing shop data. A phone number is an administrator-assigned account identifier here; no SMS ownership verification is claimed. Owners create staff accounts from Settings. Recovery must follow the administrator's own identity check.
+The script prints an 8-digit one-time code for private delivery, valid for one hour. Regeneration replaces the previous code. Five incorrect attempts lock the code. A phone number is an administrator-assigned account identifier here; no SMS ownership verification is claimed. Owners create staff accounts and regenerate staff codes from Settings; platform administrators handle owner onboarding and recovery. Recovery must follow the administrator's own identity check.
 
-The migration enables RLS on all public tables, grants explicit Data API access, and uses invoker-rights functions. No client can update/delete finalized records. Corrections are owner-only append operations. Removing membership or requiring a password reset gates subsequent server access, including with previously issued access tokens. Offline caches cannot be remotely revoked until reconnect.
+The migration enables RLS on all public tables, grants explicit Data API access, and uses invoker-rights functions. No client can update/delete finalized records. Corrections are owner-only append operations. Removing membership gates subsequent server access, including with previously issued access tokens. Issuing a new login code does not revoke existing signed-in devices. There is no persistent local record cache. Already displayed data can remain in memory until access is rechecked.
 
 ## Android build
 
@@ -38,19 +40,21 @@ npx expo start --dev-client
 
 Use your EAS project and signing credentials when prompted. The Android package is `com.radefy.mobilerecords`; change it before your first store release if needed. Native directories are generated by Expo, ignored in Git, and must not be edited by hand. `modules/record-ocr` and `plugins/with-record-privacy.js` configure the native integration.
 
-- `expo-sqlite` builds from source with SQLCipher. The app refuses unencrypted production storage. Each account/shop gets a separate database and SecureStore key.
-- Restarted sessions unlock through the Android device lock. A device PIN/password/biometric must be configured. Initial sign-in, staff administration and first password change require internet.
-- Tazkira scanning reads the **three-line MRZ on the back of an Afghan e-ID**, replacing general front/back label extraction. `Tesseract4Android 4.9.0` recognizes Latin MRZ characters locally with the bundled `eng` model; there are no runtime downloads or online scanning services. Pashto/Dari UI remains supported. Printed IMEI recognition is unchanged.
-- The MRZ parser requires three complete 30-character lines and verifies document, birth-date, expiry-date and composite check digits. It supports the observed Afghan 8+5 digit layout and standard TD1 extended 13-digit numbers. Unsupported layouts, missing characters, failed checks or conflicting reads prompt retake/manual entry. Only the reviewed name and complete formatted ID number are applied. Names are Latin transliterations, may be truncated, and are not protected by the checksum; neither checksums nor text extraction verify identity. Father/grandfather names, addresses and other fields remain manual. See [MRZ implementation and validation](docs/MRZ.md).
+- Business data uses Supabase, not SQLite. SecureStore retains session credentials and preferences. Internet is required to open the signed-in app, save drafts/records, load customers, or enroll fingerprints.
+- Legacy encrypted databases and keys are left untouched for possible recovery of previously unsynced data; they are neither opened nor automatically uploaded. The bundled read-only TAC catalogue still uses SQLite for phone-model suggestions.
+- Tazkira scanning reads the **three-line MRZ on the back of an Afghan e-ID**, replacing general front/back label extraction. `Tesseract4Android 4.9.0` recognizes Latin MRZ characters locally with a bundled MRZ-specific model; there are no runtime downloads or online scanning services. Pashto/Dari UI remains supported. Printed IMEI recognition is unchanged.
+- The MRZ parser requires three complete 30-character lines and verifies document, birth-date, expiry-date and composite check digits. Capture automatically reads the framed three-line area, preserving its resolution. Tilt/adaptive-threshold and full-image retries run only when needed; successful scans stop immediately. It supports the observed Afghan 8+5 digit layout and standard TD1 extended 13-digit numbers. Unsupported layouts, missing characters, failed checks or conflicting reads prompt retake/manual entry. Only the reviewed name and complete formatted ID number are applied. Names are Latin transliterations, may be truncated, and are not protected by the checksum; neither checksums nor text extraction verify identity. Father/grandfather names, addresses and other fields remain manual. See [MRZ implementation and validation](docs/MRZ.md).
 - Recognition reads only app-cache images and runs off the JavaScript thread. Photos are deleted on acceptance/cancellation; closing during recognition discards the result and deletes files when native work finishes. Startup removes abandoned scans. In-memory crops are recycled; neither images nor raw recognition/MRZ text are saved to records, uploaded, backed up or written to logs.
 - Model suggestions use a bundled SQLite index of 254,986 community TAC entries. Results require confirmation and are not authenticity/blacklist checks. Unknown models remain manual.
 - Camera audio/gallery permissions are excluded, and Android backup and device-transfer rules exclude app data.
 
-## Data and sync
+## Data storage
 
-Entry drafts autosave locally. Finalization atomically writes an immutable transaction snapshot, the customer, and its outbox operations. Client-generated record IDs make repeated taps/retries idempotent. Sync rechecks membership, pushes idempotent operations, then pulls shop-scoped rows in pages. Mutable shop/customer updates compare server versions; conflicts remain visible until staff choose the server copy or retry local changes. Concurrent local edits are serialized around acknowledgment so an in-flight sync does not erase them.
+Drafts autosave to Supabase and are private to their author within the shop. `save_cloud_changes` commits the customer, immutable transaction snapshot, and draft removal in one database transaction. The UI reports success only after server acknowledgement. Client-generated record IDs and replay-checked operations prevent duplicate saves; late autosaves cannot recreate a finalized draft. Network failures leave the current form open for retry; unconfirmed edits are not preserved across reloads.
 
-Finalized records preserve the shop/customer details used at the time. Each correction keeps the original and has a reason, actor and timestamp. Original and corrected forms can be printed separately. Pending changes prevent sign-out; reconnect and resolve conflicts first.
+Shop/customer changes compare server versions and reject conflicts. Refresh and review the latest data before retrying. Finalized records retain their original shop/customer details; owner corrections are append-only and audited. Fingerprint matching stays on the device using templates loaded from the active shop; templates persist in Supabase, not a local database. Raw fingerprint images remain excluded.
+
+The new storage path requires the `cloud_record_storage` migration. Local PostgreSQL tests cover atomic rollback, buy/sell retries, late drafts, staff/shop isolation, and revoked membership. They do not replace a signed-in Android/network-interruption acceptance check.
 
 ## Printing and release gates
 
@@ -71,6 +75,6 @@ npm test
 npx expo export --platform android
 ```
 
-Tests cover IMEI validation, conservative extraction, immutable snapshots, retry/idempotency behavior, conflicts, concurrent edits, HTML escaping, and PostgreSQL RLS/password/revocation policies using PGlite. These do not replace Android device tests or live Supabase Auth/Edge Function integration checks.
+Tests cover IMEI validation, conservative extraction, immutable snapshots, retry/idempotency behavior, conflicts, concurrent edits, HTML escaping, and PostgreSQL RLS/activation/revocation policies and one-time-code expiration, attempt limits, and replay protection using PGlite. These do not replace Android device tests or live Supabase Auth/Edge Function integration checks.
 
 Source asset commit URLs and checksums are recorded in `assets/asset-manifest.json`; attribution is in [asset licences](assets/licenses/README.md). `npm run assets:prepare` refreshes public assets intentionally and changes that manifest. Keep assets committed so builds and OCR do not need runtime model downloads.

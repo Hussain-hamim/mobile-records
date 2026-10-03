@@ -1,13 +1,8 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  digits,
-  validImei,
-  extractImeis,
-  normalizePhone,
-  validateDraft,
-  parties,
-} from "../src/domain/validation";
+import { randomUUID } from "node:crypto";
+import { test } from "node:test";
+import { Repository, synchronize } from "../src/data/repository";
+import { memoryVault } from "../src/data/vault.web";
 import {
   emptyPerson,
   emptyPhone,
@@ -15,10 +10,16 @@ import {
   type Draft,
   type Membership,
 } from "../src/domain/models";
-import { Repository, synchronize } from "../src/data/repository";
-import { memoryVault } from "../src/data/vault.web";
 import { formHtml } from "../src/domain/print-template";
-import { randomUUID } from "node:crypto";
+import {
+  digits,
+  extractImeis,
+  latestRecordForCustomer,
+  normalizePhone,
+  parties,
+  validateDraft,
+  validImei,
+} from "../src/domain/validation";
 const member = (): Membership => ({
   shopId: randomUUID(),
   userId: randomUUID(),
@@ -38,6 +39,7 @@ const draft = (): Draft => ({
   customer: { ...emptyPerson(), name: "Customer", idNumber: "123" },
   customerId: "",
   customerConfirmed: true,
+  fingerprintTemplate: "dGVzdC10ZW1wbGF0ZQ==",
   price: "100",
   createdAt: new Date().toISOString(),
   step: 2,
@@ -210,4 +212,32 @@ test("printed records normalize existing digits without modifying saved records"
     assert.ok(html.includes("24500 AFN"));
   }
   assert.deepEqual(record, original);
+});
+test("fingerprint templates stay on the customer and the newest record opens", async () => {
+  const repo = new Repository(memoryVault(), member(), randomUUID);
+  const saved = await repo.finalize(draft());
+  assert.equal(JSON.stringify(saved).includes("dGVzdC10ZW1wbGF0ZQ"), false);
+  const customer = (await repo.customers())[0];
+  assert.equal(customer.fingerprints?.[0].template, "dGVzdC10ZW1wbGF0ZQ==");
+  const op = (await repo.operations()).find((item) => item.kind === "customer");
+  assert.equal(
+    (op?.payload as { fingerprints: { template: string }[] }).fingerprints[0]
+      .template,
+    customer.fingerprints?.[0].template,
+  );
+  const older = {
+    ...saved,
+    id: "older",
+    occurredAt: "2020-01-01T00:00:00.000Z",
+  };
+  const newer = {
+    ...saved,
+    id: "newer",
+    occurredAt: "2024-01-01T00:00:00.000Z",
+  };
+  assert.equal(
+    latestRecordForCustomer([older, newer], saved.customerId)?.id,
+    "newer",
+  );
+  assert.equal(latestRecordForCustomer([older], "missing"), undefined);
 });

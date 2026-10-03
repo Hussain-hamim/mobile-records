@@ -1,3 +1,6 @@
+import * as Crypto from "expo-crypto";
+import * as LocalAuthentication from "expo-local-authentication";
+import * as Network from "expo-network";
 import {
   createContext,
   useCallback,
@@ -8,35 +11,37 @@ import {
   type ReactNode,
 } from "react";
 import { AppState, Platform } from "react-native";
-import * as Crypto from "expo-crypto";
-import * as Network from "expo-network";
-import * as LocalAuthentication from "expo-local-authentication";
 import { backend } from "../data/backend";
-import { secureStorage } from "../data/secure";
-import { memoryVault, openVault } from "../data/vault";
+import { demoMembership, ensureDemoData } from "../data/demo";
+import { redeemLoginCode } from "../data/login-code";
 import { Repository, synchronize } from "../data/repository";
+import { secureStorage } from "../data/secure";
 import { transportFor } from "../data/transport";
+import { memoryVault } from "../data/memory-vault";
+import { cloudVault } from "../data/cloud-vault";
 import {
-  emptyPerson,
   emptyShop,
-  emptyPhone,
+  type Amendment,
+  type Customer,
   type Draft,
+  type FingerprintEntry,
   type Language,
   type Membership,
-  type Transaction,
-  type Customer,
-  type Amendment,
   type Operation,
   type ShopProfile,
+  type Transaction,
 } from "../domain/models";
 import { normalizePhone } from "../domain/validation";
 import { translate, type TextKey } from "../i18n/strings";
 import { cleanupScans } from "../services/scanning";
 
+import { customerFromRow } from "../domain/fingerprints";
+import { closeReader } from "../services/fingerprint";
+
 function useController() {
-  const [phase, setPhase] = useState<
-    "loading" | "login" | "password" | "locked" | "ready" | "revoked"
-  >("loading");
+  const [phase, setPhase] = useState<"loading" | "login" | "ready" | "revoked">(
+    "loading",
+  );
   const [language, setLanguageState] = useState<Language>("ps");
   const [gregorian, setGregorianState] = useState(false);
   const [demo, setDemo] = useState(false);
@@ -50,12 +55,15 @@ function useController() {
   const [notice, setNotice] = useState("");
   const repository = useRef<Repository | null>(null);
   const syncPromise = useRef<Promise<void> | null>(null);
+  const activationQueue = useRef<Promise<void>>(Promise.resolve());
+  const transitions = useRef(0);
   const booted = useRef(false);
   const demoRef = useRef(false);
   const t = useCallback((key: TextKey) => translate(language, key), [language]);
   const refresh = useCallback(async () => {
     const repo = repository.current;
     if (!repo) return;
+    if (repo.vault.storage === "cloud") await repo.vault.get("profile");
     const [r, c, d, a, o] = await Promise.all([
       repo.records(),
       repo.customers(),
@@ -71,13 +79,22 @@ function useController() {
     setMembership({ ...repo.membership });
   }, []);
   const sync = useCallback(async () => {
-    if (demoRef.current || !repository.current || !backend) return;
+    if (
+      transitions.current ||
+      demoRef.current ||
+      !repository.current ||
+      !backend
+    )
+      return;
     if (syncPromise.current) return syncPromise.current;
     const repo = repository.current;
     const task = (async () => {
       setSyncing(true);
       try {
-        await synchronize(repo, transportFor(repo.membership));
+        if (repo.vault.storage === "cloud")
+          await transportFor(repo.membership).checkAccess();
+        else await synchronize(repo, transportFor(repo.membership));
+        await refresh();
         setNotice("");
         setPhase("ready");
         await secureStorage.setItem(
@@ -87,10 +104,9 @@ function useController() {
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
         if (message.includes("noAccess")) setPhase("revoked");
-        else if (message.includes("changePassword")) setPhase("password");
+        else if (message.includes("loginCodeRequired")) setPhase("login");
         setNotice(message);
       } finally {
-        await refresh();
         setSyncing(false);
       }
     })();
@@ -102,21 +118,46 @@ function useController() {
     }
   }, [refresh]);
   const activate = useCallback(
-    async (m: Membership, isDemo = false) => {
-      if (repository.current) await repository.current.vault.close();
-      const vault = isDemo
-        ? memoryVault()
-        : await openVault(m.userId, m.shopId);
-      const cached = await vault.get<ShopProfile>("profile");
-      m.profile = { ...emptyShop(), ...m.profile, ...(cached ?? {}) };
-      repository.current = new Repository(vault, m, Crypto.randomUUID);
-      demoRef.current = isDemo;
-      setDemo(isDemo);
-      setMembership(m);
-      if (!isDemo)
-        await secureStorage.setItem("active-shop", JSON.stringify(m));
-      await refresh();
-      setPhase("ready");
+    (m: Membership, isDemo = false) => {
+      transitions.current++;
+      const task = activationQueue.current
+        .catch(() => {})
+        .then(async () => {
+          await syncPromise.current?.catch(() => {});
+          await closeReader();
+          const previous = repository.current;
+          repository.current = null;
+          await previous?.vault.close();
+          if (!isDemo && !backend) throw new Error("setup");
+          const vault = isDemo ? memoryVault() : cloudVault(backend!, m);
+          try {
+            const cached = await vault.get<ShopProfile>("profile");
+            m.profile = { ...emptyShop(), ...m.profile, ...(cached ?? {}) };
+            repository.current = new Repository(vault, m, Crypto.randomUUID);
+            demoRef.current = isDemo;
+            setDemo(isDemo);
+            setMembership(m);
+            if (isDemo) {
+              await ensureDemoData(repository.current, Crypto.randomUUID);
+              if (Platform.OS === "android")
+                await secureStorage.setItem("local-demo-active", "true");
+            } else {
+              await secureStorage.removeItem("local-demo-active");
+              await secureStorage.setItem("active-shop", JSON.stringify(m));
+            }
+            await refresh();
+            setPhase("ready");
+          } catch (error) {
+            repository.current = null;
+            await vault.close().catch(() => {});
+            throw error;
+          }
+        });
+      const settled = task.finally(() => {
+        transitions.current--;
+      });
+      activationQueue.current = settled;
+      return settled;
     },
     [refresh],
   );
@@ -134,8 +175,8 @@ function useController() {
       .single();
     if (status.error) throw new Error(status.error.message);
     if (status.data.must_change_password) {
-      setPhase("password");
-      return;
+      setPhase("login");
+      throw new Error("loginCodeRequired");
     }
     const m = await backend
       .from("memberships")
@@ -161,25 +202,16 @@ function useController() {
     });
     void sync();
   }, [activate, sync]);
-  const unlock = useCallback(async () => {
-    const cached = await secureStorage.getItem("active-shop");
-    if (!cached || !backend) {
-      setPhase("login");
+  useEffect(() => {
+    if (booted.current) {
+      const repo = repository.current;
+      if (repo?.vault.storage === "sqlite") {
+        void activate({ ...repo.membership }, demoRef.current).catch((e) =>
+          setNotice(String(e)),
+        );
+      }
       return;
     }
-    const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: translate(language, "unlock"),
-      disableDeviceFallback: false,
-    });
-    if (!result.success) return;
-    const m: Membership = JSON.parse(cached);
-    // The encrypted membership marker exists only after successful sign-in.
-    // Do not refresh an expired network session to unlock offline records.
-    await activate(m);
-    void sync();
-  }, [activate, language, sync]);
-  useEffect(() => {
-    if (booted.current) return;
     booted.current = true;
     void (async () => {
       await cleanupScans();
@@ -189,12 +221,31 @@ function useController() {
         setLanguageState(p.language ?? "ps");
         setGregorianState(!!p.gregorian);
       }
+      if (
+        Platform.OS === "android" &&
+        (await secureStorage.getItem("local-demo-active")) === "true"
+      ) {
+        await activate(demoMembership(), true);
+        return;
+      }
       const cached = await secureStorage.getItem("active-shop");
-      setPhase(
-        cached && backend && Platform.OS === "android" ? "locked" : "login",
-      );
+      if (cached && backend && Platform.OS === "android") {
+        await activate(JSON.parse(cached) as Membership);
+        void sync();
+        return;
+      }
+      // Code redemption may have succeeded before local database setup failed.
+      // Resume that session; fetchMembership revalidates the user and access.
+      if (backend && Platform.OS === "android") {
+        const { data } = await backend.auth.getSession();
+        if (data.session) {
+          await fetchMembership();
+          return;
+        }
+      }
+      setPhase("login");
     })().catch(() => setPhase("login"));
-  }, []);
+  }, [activate, sync, fetchMembership]);
   useEffect(() => {
     if (phase !== "ready" || demo) return;
     const network = Network.addNetworkStateListener((state) => {
@@ -211,74 +262,35 @@ function useController() {
       app.remove();
     };
   }, [phase, demo, sync]);
-  async function signIn(phone: string, password: string) {
+  async function signIn(phone: string, code: string) {
     if (!backend || Platform.OS !== "android") throw new Error("setup");
     if (
       (await LocalAuthentication.getEnrolledLevelAsync()) ===
       LocalAuthentication.SecurityLevel.NONE
     )
       throw new Error("deviceLockRequired");
-    const { error } = await backend.auth.signInWithPassword({
-      phone: normalizePhone(phone),
-      password,
-    });
-    if (error) throw error;
-    await fetchMembership();
-  }
-  async function changePassword(password: string) {
-    if (!backend) return;
-    const { data, error } = await backend.functions.invoke("manage-account", {
-      body: { action: "password", password },
-    });
-    if (error || data?.error) throw new Error(data?.error ?? error?.message);
+    const normalized = normalizePhone(phone);
+    const { data: existing } = await backend.auth.getSession();
+    if (existing.session) {
+      const { data, error } = await backend.auth.getUser();
+      if (
+        !error &&
+        data.user?.phone &&
+        normalizePhone("+" + data.user.phone.replace(/^\+/, "")) === normalized
+      ) {
+        await fetchMembership();
+        return;
+      }
+    }
+    await redeemLoginCode(normalized, code);
     await fetchMembership();
   }
   async function enterDemo() {
-    const m: Membership = {
-      shopId: "demo-shop",
-      userId: "demo-user",
-      role: "owner",
-      version: 1,
-      profile: {
-        ...emptyShop(),
-        shopName: "Kabul Mobile",
-        name: "Ahmad",
-        address: "Kabul, Afghanistan",
-        licenceNumber: "DEMO-001",
-        shopNumber: "24",
-      },
-    };
-    await activate(m, true);
-    const repo = repository.current!;
-    for (const [i, direction] of (["sell", "buy", "buy"] as const).entries()) {
-      const draft: Draft = {
-        id: Crypto.randomUUID(),
-        direction,
-        phone: {
-          ...emptyPhone(),
-          brand: ["Apple", "Samsung", "Apple"][i],
-          model: ["iPhone 13", "Galaxy A54", "iPhone 12"][i],
-          imei1: "490154203237518",
-          storage: "128 GB",
-          color: ["Midnight", "Graphite", "Blue"][i],
-        },
-        customer: {
-          ...emptyPerson(),
-          name: ["Farid Ahmad", "Zahra Karimi", "Omid Rahimi"][i],
-          idNumber: "DEMO-" + (i + 1),
-          phone: "+9370000000" + i,
-        },
-        customerId: "",
-        customerConfirmed: true,
-        price: ["32500", "18500", "24000"][i],
-        createdAt: new Date().toISOString(),
-        step: 0,
-      };
-      await repo.finalize(draft);
-    }
-    await refresh();
+    await activate(demoMembership(), true);
   }
   async function signOut() {
+    await activationQueue.current.catch(() => {});
+    await closeReader();
     if (!demoRef.current && (await repository.current?.operations())?.length)
       throw new Error("logoutPending");
     await syncPromise.current;
@@ -286,6 +298,7 @@ function useController() {
       await backend?.auth.signOut({ scope: "local" });
       await secureStorage.removeItem("active-shop");
     }
+    await secureStorage.removeItem("local-demo-active");
     await repository.current?.vault.close();
     repository.current = null;
     setRecords([]);
@@ -299,24 +312,38 @@ function useController() {
     setPhase("login");
   }
   async function saveDraft(d: Draft) {
-    await repository.current?.saveDraft(d);
+    if (!repository.current) throw new Error("noAccess");
+    await repository.current.saveDraft(d);
     setDrafts((current) => [...current.filter((item) => item.id !== d.id), d]);
   }
   async function finalize(d: Draft) {
     const record = await repository.current!.finalize(d);
-    await refresh();
-    void sync();
+    setRecords((current) => [record, ...current.filter((r) => r.id !== record.id)]);
+    setDrafts((current) => current.filter((item) => item.id !== d.id));
+    await refresh().catch(() => setNotice("cloudRefreshFailed"));
     return record;
+  }
+  async function saveFingerprints(
+    customerId: string,
+    entries: FingerprintEntry[],
+    reason: string,
+    version: number,
+  ) {
+    await repository.current!.saveFingerprints(
+      customerId,
+      entries,
+      reason,
+      version,
+    );
+    await refresh().catch(() => setNotice("cloudRefreshFailed"));
   }
   async function saveProfile(p: ShopProfile) {
     await repository.current!.saveProfile(p);
-    await refresh();
-    void sync();
+    await refresh().catch(() => setNotice("cloudRefreshFailed"));
   }
   async function amend(r: Transaction, reason: string) {
     await repository.current!.amend(r, reason);
-    await refresh();
-    void sync();
+    await refresh().catch(() => setNotice("cloudRefreshFailed"));
   }
   async function resolve(op: Operation, keep: boolean) {
     if (!backend || !membership || !["shop", "customer"].includes(op.kind))
@@ -349,7 +376,7 @@ function useController() {
     } else
       updates.push({
         key: "customer:" + id,
-        value: { id, person: data.person, version: data.version },
+        value: customerFromRow(data),
       });
     await repository.current!.vault.batch(updates);
     await refresh();
@@ -379,14 +406,13 @@ function useController() {
     syncing,
     notice,
     signIn,
-    changePassword,
     enterDemo,
-    unlock,
     signOut,
     sync,
     saveDraft,
     finalize,
     saveProfile,
+    saveFingerprints,
     amend,
     resolve,
     preferences,

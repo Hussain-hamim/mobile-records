@@ -10,7 +10,9 @@ export async function recordHtml(
   correction?: string,
 ) {
   const font = await Asset.fromModule(
-    require("../../assets/fonts/NotoSansArabic.ttf"),
+    language === "ps"
+      ? require("../../assets/fonts/BahijBaraem-Regular.ttf")
+      : require("../../assets/fonts/NotoSansArabic.ttf"),
   ).downloadAsync();
   return formHtml(
     record,

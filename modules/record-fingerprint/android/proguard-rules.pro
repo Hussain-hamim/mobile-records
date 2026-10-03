@@ -1,0 +1,2 @@
+-keep class com.zkteco.** { *; }
+-keep class com.zkteco.zkfinger.** { *; }

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Modal, ScrollView, View } from "react-native";
-import { useApp } from "../state/app-context";
 import type { FormPicture } from "../services/form-image-types";
+import { useApp } from "../state/app-context";
 import { Button, Row, Txt, colors } from "./ui";
 
 export function FormPicturePreview({
@@ -11,7 +11,7 @@ export function FormPicturePreview({
   picture: FormPicture | null;
   onClose: () => void;
 }) {
-  const { t } = useApp();
+  const { t, language } = useApp();
   useEffect(() => {
     if (!picture) return;
     return () => URL.revokeObjectURL(picture.uri);
@@ -62,7 +62,10 @@ export function FormPicturePreview({
                   background: colors.green,
                   color: "white",
                   textDecoration: "none",
-                  fontFamily: "Noto, sans-serif",
+                  fontFamily:
+                    language === "ps"
+                      ? "BahijBaraem, sans-serif"
+                      : "Noto, sans-serif",
                   fontSize: 14,
                 }}
               >

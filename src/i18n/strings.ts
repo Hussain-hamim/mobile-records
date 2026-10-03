@@ -1,6 +1,233 @@
 import type { Language } from "../domain/models";
 import { digits } from "../domain/validation";
 const copy = {
+  tryMrzOnline: [
+    "Try MRZ online (optional)",
+    "MRZ آنلاین ولولئ (اختیاري)",
+    "خواندن آنلاین MRZ (اختیاری)",
+  ],
+  sendMrzGoogle: [
+    "Send MRZ crop to Google",
+    "د MRZ برخه ګوګل ته واستوئ",
+    "ارسال برش MRZ به گوگل",
+  ],
+  mrzOnlineConsent: [
+    "Send only this cropped MRZ area to Google? Its text must pass the same checks as offline reading. Nothing is uploaded until you choose Send.",
+    "یوازې د MRZ دا پرې شوې برخه ګوګل ته واستول شي؟ متن باید د آفلاین لوستلو په څېر کتنې تېرې کړي. تر استولو مخکې هېڅ نه لېږل کېږي.",
+    "فقط همین ناحیه برش‌شده MRZ به گوگل فرستاده شود؟ متن باید همان بررسی‌های آفلاین را بگذراند. تا انتخاب ارسال، چیزی فرستاده نمی‌شود.",
+  ],
+  mrzOnlinePrivacy: [
+    "MRZ is read offline. Online retry is optional and sends only the selected MRZ crop after your confirmation. Temporary photos are deleted when you finish.",
+    "MRZ آفلاین لوستل کېږي. آنلاین هڅه اختیاري ده او یوازې ستاسو له تایید وروسته د MRZ ټاکل شوې برخه لېږي. لنډمهاله عکسونه په پای کې ړنګېږي.",
+    "MRZ آفلاین خوانده می‌شود. تلاش آنلاین اختیاری است و فقط برش انتخاب‌شده MRZ را پس از تأیید شما می‌فرستد. تصاویر موقت در پایان حذف می‌شوند.",
+  ],
+
+  scanFront: [
+    "1 · Scan the front",
+    "1 · د کارت مخ سکین کړئ",
+    "1 · اسکن روی کارت",
+  ],
+  scanBack: [
+    "2 · Scan the back",
+    "2 · د کارت شا سکین کړئ",
+    "2 · اسکن پشت کارت",
+  ],
+  cardCorner: ["Card corner", "د کارت کونج", "گوشه کارت"],
+  hybridPrivacy: [
+    "Photos stay on this phone unless you choose Try online. Temporary photos are deleted when you finish or close.",
+    "انځورونه په دې موبایل کې پاتې کېږي، مګر که آنلاین لوستل وټاکئ. لنډمهاله انځورونه په پای یا تړلو کې ړنګېږي.",
+    "تصاویر در این گوشی می‌مانند مگر خواندن آنلاین را انتخاب کنید. تصاویر موقت هنگام پایان یا بستن حذف می‌شوند.",
+  ],
+  cardCaptureHint: [
+    "Fit the whole card inside the frame. Hold steady, avoid reflections, and move closer until the small text is clear.",
+    "ټول کارت په چوکاټ کې ونیسئ. موبایل ثابت وساتئ، له ځلا ډډه وکړئ او تر روښانه متن پورې نږدې شئ.",
+    "تمام کارت را داخل کادر بگیرید. گوشی را ثابت نگه دارید، از بازتاب نور دوری کنید و تا واضح شدن نوشته نزدیک شوید.",
+  ],
+  adjustCardCorners: [
+    "Drag the four numbered handles onto the card corners. Only the selected area will be read.",
+    "څلور شمېرې لرونکي ټکي د کارت کونجونو ته کش کړئ. یوازې ټاکل شوې برخه لوستل کېږي.",
+    "چهار دستگیره شماره‌دار را به گوشه‌های کارت بکشید. فقط قسمت انتخاب‌شده خوانده می‌شود.",
+  ],
+  confirmCardRead: [
+    "Confirm crop & read offline",
+    "برخه تایید او آفلاین ولولئ",
+    "تأیید برش و خواندن آفلاین",
+  ],
+  invalidCardCorners: [
+    "Select all four corners without crossing the edges.",
+    "څلور کونجونه داسې وټاکئ چې څنډې سره پرې نه کړي.",
+    "چهار گوشه را بدون تقاطع لبه‌ها انتخاب کنید.",
+  ],
+  torchOn: ["Light on", "څراغ روښانه کړئ", "روشن کردن چراغ"],
+  torchOff: ["Light off", "څراغ بند کړئ", "خاموش کردن چراغ"],
+  readAgain: ["Read offline again", "بیا آفلاین ولولئ", "خواندن دوباره آفلاین"],
+  tryOnline: ["Try online", "آنلاین ولولئ", "خواندن آنلاین"],
+  onlineConsent: [
+    "Send this cropped side to Google Cloud Vision for text reading? Each side or retry uses one online read. Review all returned details before applying.",
+    "د متن لوستلو لپاره د کارت دا ټاکل شوې خوا Google Cloud Vision ته واستول شي؟ هره خوا یا بیا هڅه یو آنلاین لوستل کاروي. ټول معلومات له ثبت مخکې وګورئ.",
+    "این سمت برش‌خورده کارت برای خواندن متن به Google Cloud Vision فرستاده شود؟ هر سمت یا تلاش دوباره یک خواندن آنلاین مصرف می‌کند. همه اطلاعات را پیش از ثبت بررسی کنید.",
+  ],
+  sendCardGoogle: [
+    "Send this crop to Google",
+    "دا ټاکل شوې برخه ګوګل ته واستوئ",
+    "ارسال این برش به گوگل",
+  ],
+  onlineNotConfigured: [
+    "Online reading is unavailable. Continue offline or enter the details manually.",
+    "آنلاین لوستل شتون نه لري. آفلاین دوام ورکړئ یا معلومات په لاس ولیکئ.",
+    "خواندن آنلاین در دسترس نیست. آفلاین ادامه دهید یا اطلاعات را دستی وارد کنید.",
+  ],
+  onlineQuotaReached: [
+    "The free online allowance is used up. Offline reading still works.",
+    "د وړیا آنلاین لوستلو حد پوره شوی. آفلاین لوستل لا هم کار کوي.",
+    "سهمیه رایگان آنلاین تمام شده است. خواندن آفلاین همچنان کار می‌کند.",
+  ],
+  onlineRateLimited: [
+    "Too many online reads. Wait a minute and try again.",
+    "آنلاین لوستل ډېر شول. یوه دقیقه وروسته بیا هڅه وکړئ.",
+    "تعداد درخواست‌ها زیاد است. یک دقیقه بعد دوباره تلاش کنید.",
+  ],
+  duplicateScan: [
+    "This request was already sent. Start a new online read if needed.",
+    "دا غوښتنه مخکې استول شوې. که اړتیا وي نوې آنلاین هڅه وکړئ.",
+    "این درخواست قبلاً ارسال شده است. در صورت نیاز خواندن آنلاین جدید را آغاز کنید.",
+  ],
+  scanTooLarge: [
+    "This crop is too large to upload. Retake the card more closely.",
+    "دا برخه د لېږلو لپاره ډېره لویه ده. کارت له نږدې بیا واخلئ.",
+    "این برش برای ارسال بسیار بزرگ است. عکس نزدیک‌تر از کارت بگیرید.",
+  ],
+  invalidScan: [
+    "The selected image could not be read. Please retake it.",
+    "ټاکل شوی انځور ونه لوستل شو. بیا یې واخلئ.",
+    "تصویر انتخاب‌شده قابل خواندن نیست. دوباره عکس بگیرید.",
+  ],
+  onlineTimedOut: [
+    "Online reading timed out. Your offline results are kept.",
+    "د آنلاین لوستلو وخت پای ته ورسېد. آفلاین پایلې ساتل شوې دي.",
+    "مهلت خواندن آنلاین تمام شد. نتایج آفلاین حفظ شده‌اند.",
+  ],
+  onlineReadFailed: [
+    "Online reading failed. Check your connection or continue offline.",
+    "آنلاین لوستل ناکام شول. انټرنېټ وګورئ یا آفلاین دوام ورکړئ.",
+    "خواندن آنلاین ناموفق بود. اتصال را بررسی کنید یا آفلاین ادامه دهید.",
+  ],
+  scanCancelled: [
+    "Online reading cancelled.",
+    "آنلاین لوستل لغوه شول.",
+    "خواندن آنلاین لغو شد.",
+  ],
+  scanReadFailed: [
+    "No readable details found. Check the crop, reduce glare, retake, or try online. You can also enter details manually.",
+    "لوستل کېدونکي معلومات ونه موندل شول. ټاکل شوې برخه او ځلا وګورئ، بیا انځور واخلئ یا آنلاین هڅه وکړئ. معلومات په لاس هم لیکلی شئ.",
+    "اطلاعات خوانا پیدا نشد. برش و بازتاب نور را بررسی کنید، دوباره عکس بگیرید یا آنلاین امتحان کنید. ورود دستی هم ممکن است.",
+  ],
+  offlineReading: [
+    "Reading on this phone…",
+    "په دې موبایل کې لوستل کېږي…",
+    "در حال خواندن روی این گوشی…",
+  ],
+  onlineReading: [
+    "Reading with Google…",
+    "په ګوګل کې لوستل کېږي…",
+    "در حال خواندن با گوگل…",
+  ],
+  cardIdMismatch: [
+    "The ID number differs from the previous reading. Do not combine different cards. Retake this side or keep only the previous results.",
+    "د تذکرې شمېره له مخکینۍ پایلې سره توپیر لري. بېلابېل کارتونه مه یوځای کوئ. دا خوا بیا واخلئ یا یوازې مخکینۍ پایلې وساتئ.",
+    "شماره تذکره با خواندن قبلی فرق دارد. کارت‌های متفاوت را ترکیب نکنید. این سمت را دوباره بگیرید یا فقط نتایج قبلی را نگه دارید.",
+  ],
+  keepPreviousScan: [
+    "Keep previous results",
+    "مخکینۍ پایلې وساتئ",
+    "نگه داشتن نتایج قبلی",
+  ],
+  currentReading: ["Current value", "اوسنی ارزښت", "مقدار فعلی"],
+  suggestedReading: ["New reading", "نوي لوستل شوي معلومات", "خواندن جدید"],
+  keepCurrent: ["Keep current", "اوسنی وساتئ", "نگه داشتن فعلی"],
+  useReading: ["Use this reading", "دا لوستل وکاروئ", "استفاده از این خواندن"],
+  readByGoogle: ["Read with Google", "په ګوګل لوستل شوي", "خوانده‌شده با گوگل"],
+  readOffline: ["Read offline", "آفلاین لوستل شوي", "خوانده‌شده آفلاین"],
+  mrzChecksPassed: [
+    "MRZ checks passed",
+    "د MRZ کتنې بریالۍ شوې",
+    "بررسی‌های MRZ موفق بود",
+  ],
+  reviewEveryField: [
+    "Check every field against the card",
+    "هر معلومات له کارت سره وګورئ",
+    "هر فیلد را با کارت بررسی کنید",
+  ],
+  lowConfidenceReview: [
+    "Some readings are uncertain. Compare every suggested value with the card.",
+    "ځینې لوستل ډاډمن نه دي. هر وړاندیز شوی ارزښت له کارت سره وګورئ.",
+    "برخی خواندن‌ها نامطمئن هستند. هر مقدار پیشنهادی را با کارت مقایسه کنید.",
+  ],
+  scanBackOptional: [
+    "Scan the back (optional)",
+    "د کارت شا سکین کړئ (اختیاري)",
+    "اسکن پشت کارت (اختیاری)",
+  ],
+
+  dateOfBirth: [
+    "Date of birth (as printed)",
+    "د زېږېدو نېټه (لکه پر کارت)",
+    "تاریخ تولد (مطابق کارت)",
+  ],
+  gender: ["Gender (M / F)", "جنسیت (M / F)", "جنسیت (M / F)"],
+  nationality: ["Nationality", "تابعیت", "تابعیت"],
+  scanMrzMode: ["MRZ lines", "د MRZ کرښې", "سطرهای MRZ"],
+  scanPrintedMode: ["Printed details", "چاپ شوي معلومات", "مشخصات چاپی"],
+  printedIdHint: [
+    "Place the printed side of the SAME card inside the frame. Keep labels and values clear. Readable details are suggested for review; missing details stay blank.",
+    "د همدې کارت چاپ شوې خوا په چوکاټ کې ونیسئ. نومونې او معلومات روښانه وساتئ. لوستل شوي معلومات د کتنې لپاره وړاندې کېږي؛ نه لوستل شوي تش پاتې کېږي.",
+    "روی چاپ‌شده همان کارت را داخل کادر قرار دهید. عنوان‌ها و مقادیر واضح باشند. اطلاعات خوانا برای بازبینی پیشنهاد می‌شود؛ موارد ناخوانا خالی می‌مانند.",
+  ],
+  printedIdCropPreview: [
+    "Selected card area · check that labels and values are fully visible.",
+    "د کارت ټاکل شوې برخه · ټول نومونه او معلومات وګورئ.",
+    "ناحیه انتخاب‌شده کارت · عنوان‌ها و مقادیر باید کامل دیده شوند.",
+  ],
+  capturePrintedId: [
+    "Capture & read details",
+    "عکس او د معلوماتو لوستل",
+    "عکس و خواندن مشخصات",
+  ],
+  readPrintedId: [
+    "Read printed details · offline",
+    "چاپ شوي معلومات ولولئ · بې انټرنېټه",
+    "خواندن مشخصات چاپی · آفلاین",
+  ],
+  addPrintedDetails: [
+    "Scan printed details on the same card",
+    "د همدې کارت چاپ شوي معلومات سکین کړئ",
+    "اسکن مشخصات چاپی همان کارت",
+  ],
+  addMrzDetails: [
+    "Scan MRZ on the same card",
+    "د همدې کارت MRZ سکین کړئ",
+    "اسکن MRZ همان کارت",
+  ],
+  reviewSavedScan: [
+    "Review previous scan",
+    "د مخکیني سکین کتنه",
+    "بازبینی اسکن قبلی",
+  ],
+  printedIdReview: [
+    "Compare every suggested value with the card. Printed-text suggestions are not checksum-verified. M = male, F = female, AFG = Afghan. Keep birth dates in the calendar/order printed on the card. Unreadable or absent fields remain manual.",
+    "هر وړاندیز شوی معلومات له کارت سره پرتله کړئ. چاپ شوي معلومات کنټرولي شمېرې نه لري. M = نارینه، F = ښځینه، AFG = افغان. د زېږېدو نېټه د کارت په جنتري او ترتیب وساتئ. نه لوستل شوي معلومات په لاس ولیکئ.",
+    "هر مقدار پیشنهادی را با کارت مقایسه کنید. مشخصات چاپی با رقم کنترلی تایید نمی‌شوند. M = مرد، F = زن، AFG = افغان. تاریخ تولد را با تقویم و ترتیب چاپ‌شده نگه دارید. موارد ناخوانا یا ناموجود را دستی وارد کنید.",
+  ],
+  printedIdNotFound: [
+    "No readable labelled details found. Move closer, avoid glare and retake, or enter details manually.",
+    "روښانه نومول شوي معلومات ونه موندل شول. نږدې شئ، له ځلا ډډه وکړئ او بیا عکس واخلئ یا په لاس ولیکئ.",
+    "مشخصات عنوان‌دار خوانا یافت نشد. نزدیک‌تر شوید، از انعکاس نور جلوگیری کنید و دوباره عکس بگیرید یا دستی وارد کنید.",
+  ],
+  printedIdNativeRequired: [
+    "Printed-details scanning needs the updated Android build with offline language models.",
+    "د چاپ شویو معلوماتو سکین د آفلاین ژبو له ماډلونو سره نوي Android جوړښت ته اړتیا لري.",
+    "اسکن مشخصات چاپی به نسخه جدید Android با مدل‌های زبان آفلاین نیاز دارد.",
+  ],
   downloadPng: ["Download PNG", "PNG ډاونلوډ کړئ", "دانلود PNG"],
   savePicture: [
     "Save as picture",
@@ -98,19 +325,29 @@ const copy = {
     "همه معاملات، همین‌جا.",
   ],
   filters: ["Filter by date", "د نېټې له مخې چاڼ", "فیلتر براساس تاریخ"],
+  cloudRefreshFailed: [
+    "Saved to Supabase. Refresh to load the latest records.",
+    "په Supabase کې وساتل شو. د تازه ثبتونو لپاره بیا تازه کړئ.",
+    "در Supabase ذخیره شد. برای دیدن سوابق جدید تازه‌سازی کنید.",
+  ],
   autoSaved: [
-    "Your draft saves automatically",
-    "ستاسو مسوده په اوتومات ډول ساتل کېږي",
-    "پیش‌نویس شما خودکار ذخیره می‌شود",
+    "Drafts save to Supabase · Internet required",
+    "مسودې په Supabase کې ساتل کېږي · انټرنېټ اړین دی",
+    "پیش‌نویس‌ها در Supabase ذخیره می‌شوند · اینترنت لازم است",
+  ],
+  demoDraftHint: [
+    "Demo only · Clears when the app reloads",
+    "یوازې نمونه · د اپ په بیا چالانېدو پاکېږي",
+    "فقط نمایشی · با بارگذاری دوباره پاک می‌شود",
   ],
   essentials: ["The essentials", "اړین معلومات", "مشخصات اصلی"],
   step: ["Step", "پړاو", "مرحله"],
   of: ["of", "له", "از"],
 
   deviceLockRequired: [
-    "Set a device PIN, password or biometric before using offline records.",
-    "د آفلاین ثبتونو لپاره د موبایل پټنوم یا د ګوتې قفل وټاکئ.",
-    "برای سوابق آفلاین، رمز یا قفل اثر انگشت گوشی را فعال کنید.",
+    "Set a device PIN, password or biometric to protect your account.",
+    "د خپل حساب ساتنې لپاره د موبایل پټنوم یا د ګوتې قفل وټاکئ.",
+    "برای محافظت از حساب، رمز یا قفل اثر انگشت گوشی را فعال کنید.",
   ],
   owner: ["Owner", "مالک", "مالک"],
   employee: ["Staff", "کارکوونکی", "کارمند"],
@@ -162,7 +399,18 @@ const copy = {
   color: ["Colour", "رنګ", "رنگ"],
   simCount: ["SIM slots", "د سیم شمېر", "تعداد سیم"],
   imei1: ["IMEI 1", "IMEI ۱", "IMEI ۱"],
+  showImei: [
+    "Show IMEI details",
+    "د IMEI معلومات ښکاره کړئ",
+    "نمایش جزئیات IMEI",
+  ],
+  hideImei: [
+    "Hide IMEI details",
+    "د IMEI معلومات پټ کړئ",
+    "پنهان کردن جزئیات IMEI",
+  ],
   imei2: ["IMEI 2 (optional)", "IMEI ۲ (اختیاري)", "IMEI ۲ (اختیاری)"],
+  addSecondImei: ["Add second IMEI", "دوهم IMEI اضافه کړئ", "افزودن IMEI دوم"],
   storage: ["Storage", "حافظه", "حافظه"],
   ram: ["RAM", "رېم", "رم"],
   condition: ["Condition", "حالت", "وضعیت"],
@@ -201,16 +449,45 @@ const copy = {
   calendar: ["Gregorian dates", "میلادي نېټې", "تاریخ میلادی"],
   signOut: ["Sign out", "وتل", "خروج"],
   signIn: ["Sign in", "ننوتل", "ورود"],
-  password: ["Password", "پټنوم", "رمز عبور"],
-  newPassword: [
-    "New password (12+ characters)",
-    "نوی پټنوم (۱۲ توري)",
-    "رمز جدید (۱۲ حرف)",
+  loginCode: [
+    "One-time login code",
+    "د ننوتلو یوځلي کوډ",
+    "کد یک‌بار مصرف ورود",
   ],
-  changePassword: [
-    "Set your password",
-    "خپل پټنوم وټاکئ",
-    "رمز خود را تعیین کنید",
+  loginCodeHint: [
+    "Enter the 8-digit code provided by your administrator. No SMS is sent.",
+    "د مدیر لخوا درکړل شوی ۸ عددي کوډ ولیکئ. پیغام نه لېږل کېږي.",
+    "کد ۸ رقمی را که مدیر به شما داده وارد کنید. پیامک ارسال نمی‌شود.",
+  ],
+  invalidLoginCode: [
+    "The phone number or code is incorrect, expired, or already used. Ask your administrator for a new code.",
+    "شمېره یا کوډ ناسم، پای ته رسېدلی یا کارول شوی دی. له مدیر څخه نوی کوډ وغواړئ.",
+    "شماره یا کد نادرست، منقضی یا استفاده‌شده است. از مدیر کد جدید بخواهید.",
+  ],
+  loginCodeRequired: [
+    "Ask your administrator for a new login code.",
+    "له مدیر څخه د ننوتلو نوی کوډ وغواړئ.",
+    "از مدیر کد ورود جدید بخواهید.",
+  ],
+  loginUnavailable: [
+    "Sign-in is unavailable. Please try again shortly.",
+    "ننوتل اوس ممکن نه دي. لږ وروسته بیا هڅه وکړئ.",
+    "ورود فعلاً ممکن نیست. کمی بعد دوباره تلاش کنید.",
+  ],
+  loginCodeExchangeFailed: [
+    "Sign-in could not finish. Ask your administrator for a new code.",
+    "ننوتل بشپړ نه شول. له مدیر څخه نوی کوډ وغواړئ.",
+    "ورود تکمیل نشد. از مدیر کد جدید بخواهید.",
+  ],
+  regenerateCode: [
+    "Generate new login code",
+    "د ننوتلو نوی کوډ جوړول",
+    "تولید کد ورود جدید",
+  ],
+  codeGenerated: [
+    "Share this code privately. It expires in one hour and works once. Any previous code is invalid.",
+    "دا کوډ په شخصي ډول شریک کړئ. په یو ساعت کې ختمېږي او یو ځل کار کوي. پخوانی کوډ نور اعتبار نه لري.",
+    "این کد را خصوصی تحویل دهید. یک ساعت اعتبار دارد و فقط یک بار کار می‌کند. کد قبلی باطل است.",
   ],
   invitationOnly: [
     "For invited shops and their staff",
@@ -218,9 +495,14 @@ const copy = {
     "برای دکان‌ها و کارکنان دعوت‌شده",
   ],
   recovery: [
-    "Forgot your password? Contact your administrator.",
-    "پټنوم مو هېر دی؟ له مدیر سره اړیکه ونیسئ.",
-    "رمز را فراموش کردید؟ با مدیر تماس بگیرید.",
+    "Need a new code? Contact your administrator.",
+    "نوی کوډ ته اړتیا لرئ؟ له مدیر سره اړیکه ونیسئ.",
+    "کد جدید نیاز دارید؟ با مدیر تماس بگیرید.",
+  ],
+  androidSignIn: [
+    "Use the Android app to sign in. You can explore the demo here.",
+    "د ننوتلو لپاره د Android اپ وکاروئ. دلته ازمایښتي کتنه کولی شئ.",
+    "برای ورود از برنامه Android استفاده کنید. اینجا می‌توانید نمونه را ببینید.",
   ],
   setup: [
     "Connect your Supabase project to sign in.",
@@ -247,14 +529,14 @@ const copy = {
     "تعارض — نیاز به بازبینی",
   ],
   offline: [
-    "Offline · saved on this phone",
-    "آفلاین · په دې موبایل کې خوندي",
-    "آفلاین · ذخیره در این گوشی",
+    "Offline · Reconnect to save",
+    "آفلاین · د ساتلو لپاره وصل شئ",
+    "آفلاین · برای ذخیره دوباره وصل شوید",
   ],
   syncHint: [
-    "Your records stay available without internet.",
-    "ستاسو ثبتونه بې انټرنېټه هم شته.",
-    "سوابق شما بدون اینترنت هم در دسترس است.",
+    "Records save directly to Supabase. Internet is required.",
+    "ثبتونه مستقیم په Supabase کې ساتل کېږي. انټرنېټ اړین دی.",
+    "سوابق مستقیم در Supabase ذخیره می‌شوند. اینترنت لازم است.",
   ],
   scanImei: ["Scan IMEI", "IMEI سکین کړئ", "اسکن IMEI"],
   scanId: [
@@ -268,9 +550,14 @@ const copy = {
     "بارکد یا شماره چاپی را داخل کادر قرار دهید.",
   ],
   idHint: [
-    "Use the BACK of the e-ID. Keep all three lines with < symbols sharp and inside the lower guide. Avoid glare. Reading works offline.",
-    "د برېښنايي تذکرې شا ونیسئ. د < نښو درې واړه کرښې په لاندې چوکاټ کې روښانه وساتئ. له ځلا ډډه وکړئ. لوستل بې انټرنېټه کېږي.",
-    "پشت تذکره الکترونیکی را بگیرید. هر سه سطر دارای علامت < را واضح در کادر پایین نگه دارید. از انعکاس نور جلوگیری کنید. خواندن آفلاین است.",
+    "Place all 3 MRZ lines from the back of the e-ID inside the clear frame, including every < symbol. Only this area is captured and read. Hold steady and avoid glare.",
+    "د برېښنايي تذکرې د شا ټولې 3 MRZ کرښې له ټولو < نښو سره په روښانه چوکاټ کې ونیسئ. یوازې همدا برخه پرې کېږي او لوستل کېږي. موبایل ثابت وساتئ او له ځلا ډډه وکړئ.",
+    "هر 3 سطر MRZ پشت تذکره را همراه با همه علامت‌های < داخل کادر روشن قرار دهید. فقط همین ناحیه برش داده و خوانده می‌شود. گوشی را ثابت نگه دارید و از انعکاس نور جلوگیری کنید.",
+  ],
+  mrzCropPreview: [
+    "Selected area only · all 3 MRZ lines must be visible. Retake if an edge is missing.",
+    "یوازې ټاکل شوې برخه · ټولې 3 MRZ کرښې باید ښکاره وي. که څنډه پرې شوې وي، بیا عکس واخلئ.",
+    "فقط ناحیه انتخاب‌شده · هر 3 سطر MRZ باید دیده شوند. اگر لبه‌ای بریده شده، دوباره عکس بگیرید.",
   ],
   photoPrivacy: [
     "Photos are deleted after review. Only confirmed fields are saved.",
@@ -278,6 +565,12 @@ const copy = {
     "عکس‌ها پس از بازبینی حذف می‌شوند. فقط اطلاعات تاییدشده ذخیره می‌شود.",
   ],
   capture: ["Take photo", "عکس واخلئ", "عکس بگیرید"],
+  captureMrz: ["Capture & read MRZ", "عکس او د MRZ لوستل", "عکس و خواندن MRZ"],
+  cameraUnavailable: [
+    "The camera could not start. Close the scanner and try again, or enter details manually.",
+    "کمره پیل نه شوه. سکین وتړئ او بیا هڅه وکړئ یا معلومات په لاس ولیکئ.",
+    "دوربین راه‌اندازی نشد. اسکن را ببندید و دوباره تلاش کنید یا اطلاعات را دستی وارد کنید.",
+  ],
   retake: ["Retake", "بیا عکس", "عکس مجدد"],
   rotate: ["Rotate", "څرخول", "چرخاندن"],
   crop: ["Trim edges", "څنډې پرې کړئ", "برش حاشیه"],
@@ -288,9 +581,9 @@ const copy = {
     "خواندن MRZ · آفلاین",
   ],
   mrzReview: [
-    "MRZ checks passed. Compare the name and full ID number with the card before accepting; checksums do not verify identity or protect the name. Names are in Latin letters and may be shortened. Other details must be entered manually.",
-    "د MRZ کنټرولي شمېرې سمې دي. له منلو مخکې نوم او د تذکرې بشپړه شمېره له کارت سره پرتله کړئ؛ دا کتنه هویت یا نوم نه تاییدوي. نوم په لاتین تورو دی او ښايي لنډ وي. نور معلومات په لاس ولیکئ.",
-    "ارقام کنترلی MRZ درست است. پیش از پذیرش، نام و شماره کامل تذکره را با کارت مقایسه کنید؛ این بررسی هویت یا نام را تایید نمی‌کند. نام با حروف لاتین است و ممکن است کوتاه باشد. سایر اطلاعات را دستی وارد کنید.",
+    "MRZ checks passed for the ID. Compare every value with the same card before accepting. M = male, F = female, AFG = Afghan. Names may be shortened. Scan printed details for relatives, birth date and address; those suggestions are not checksum-verified.",
+    "د تذکرې د شمېرې MRZ کتنې سمې دي. هر معلومات له همدې کارت سره پرتله کړئ. M = نارینه، F = ښځینه، AFG = افغان. نومونه ښايي لنډ وي. د خپلوانو، زېږېدو نېټې او پتې لپاره چاپ شوي معلومات سکین کړئ؛ هغه کنټرولي شمېرې نه لري.",
+    "ارقام کنترلی MRZ شماره تذکره درست است. هر مقدار را با همان کارت مقایسه کنید. M = مرد، F = زن، AFG = افغان. نام‌ها ممکن است کوتاه باشند. برای نام اقارب، تاریخ تولد و آدرس مشخصات چاپی را اسکن کنید؛ این پیشنهادها رقم کنترلی ندارند.",
   ],
   mrzNotFound: [
     "No complete MRZ found. Retake the back of the e-ID with all three lines visible, or enter details manually.",
@@ -450,11 +743,286 @@ const copy = {
     "له وتلو مخکې بدلونونه همغږي کړئ.",
     "پیش از خروج تغییرات را همگام کنید.",
   ],
-  unlock: ["Unlock records", "ثبتونه خلاص کړئ", "بازکردن سوابق"],
-  unlockHint: [
-    "Use your device lock to open saved records.",
-    "د ثبتونو لپاره د موبایل قفل خلاص کړئ.",
-    "برای بازکردن سوابق از قفل گوشی استفاده کنید.",
+  scanFingerprint: [
+    "Scan fingerprint",
+    "د ګوتې نښه سکین کړئ",
+    "اسکن اثر انگشت",
+  ],
+  scanFingerprintIntro: [
+    "Open a customer profile and all their records.",
+    "د پېرودونکي پېژندپاڼه او ټول ثبتونه پرانیزئ.",
+    "پروفایل مشتری و تمام سوابقش را باز کنید.",
+  ],
+  captureFingerprint: [
+    "Capture fingerprint",
+    "د ګوتې نښه واخلئ",
+    "ثبت اثر انگشت",
+  ],
+  fingerprintOnFile: [
+    "Fingerprint on file",
+    "د ګوتې نښه ثبت ده",
+    "اثر انگشت ثبت شده است",
+  ],
+  fingerprintPress: [
+    "Press the same finger three times.",
+    "هماغه ګوته درې ځله کېږدئ.",
+    "همان انگشت را سه بار بگذارید.",
+  ],
+  fingerprintPlace: [
+    "Place a finger on the reader.",
+    "ګوته پر لوستونکي کېږدئ.",
+    "انگشت را روی دستگاه بگذارید.",
+  ],
+  fingerprintRequired: [
+    "Capture a fingerprint before saving this registration.",
+    "د ثبتولو مخکې د ګوتې نښه واخلئ.",
+    "پیش از ذخیره این ثبت، اثر انگشت را بگیرید.",
+  ],
+  fingerprintNativeRequired: [
+    "Fingerprint reading needs the Android development build and a ZK9500 reader.",
+    "د ګوتې نښې لپاره د Android پراختیايي نسخه او ZK9500 لوستونکی اړین دی.",
+    "خواندن اثر انگشت به نسخه توسعه Android و دستگاه ZK9500 نیاز دارد.",
+  ],
+  readerNotFound: [
+    "Android cannot see a USB reader. Connect the ZK9500 directly to this phone through a USB OTG adapter, then retry. A reader connected to your computer is not available here.",
+    "Android د USB لوستونکی نه ویني. ZK9500 د USB OTG اډاپټر له لارې مستقیم له دې موبایل سره ونښلوئ او بیا هڅه وکړئ. له کمپیوټر سره نښلول شوی لوستونکی دلته نه کار کوي.",
+    "Android دستگاه USB را نمی‌بیند. ZK9500 را با آداپتور USB OTG مستقیماً به همین گوشی وصل کنید و دوباره تلاش کنید. دستگاه وصل‌شده به کمپیوتر اینجا در دسترس نیست.",
+  ],
+  readerUnsupported: [
+    "Android sees a USB device, but not a supported fingerprint reader. Check the connection to the ZK9500; the USB identifiers below can help diagnose it.",
+    "Android یو USB وسیله ویني، خو د ګوتې نښې ملاتړ شوی لوستونکی نه ویني. د ZK9500 نښلون وګورئ؛ لاندې USB شمېرې د ستونزې په موندلو کې مرسته کوي.",
+    "Android یک دستگاه USB می‌بیند، اما دستگاه اثر انگشت پشتیبانی‌شده نیست. اتصال ZK9500 را بررسی کنید؛ شناسه‌های USB زیر برای بررسی مشکل کمک می‌کنند.",
+  ],
+  readerNoHost: [
+    "This Android device does not report USB host support, which the fingerprint reader requires.",
+    "دا Android وسیله د USB کوربه ملاتړ نه ښيي، چې د ګوتې لوستونکي لپاره اړین دی.",
+    "این دستگاه Android پشتیبانی میزبان USB را گزارش نمی‌کند؛ دستگاه اثر انگشت به آن نیاز دارد.",
+  ],
+  readerPermissionTimeout: [
+    "USB permission timed out. Retry and accept Android’s USB permission prompt.",
+    "د USB اجازې وخت پای ته ورسېد. بیا هڅه وکړئ او د Android د USB اجازې غوښتنه ومنئ.",
+    "مهلت اجازه USB تمام شد. دوباره تلاش کنید و درخواست اجازه USB در Android را بپذیرید.",
+  ],
+  readerConnecting: [
+    "Connecting to the reader… Accept USB access if Android asks.",
+    "له لوستونکي سره نښلېږي… که Android د USB اجازه وغواړي، ویې منئ.",
+    "در حال اتصال به دستگاه… اگر Android اجازه USB خواست، بپذیرید.",
+  ],
+  readerRetry: ["Retry connection", "بیا ونښلوئ", "تلاش دوباره برای اتصال"],
+  readerUsbDevices: [
+    "USB devices detected",
+    "موندل شوې USB وسیلې",
+    "دستگاه‌های USB شناسایی‌شده",
+  ],
+  readerDenied: [
+    "USB permission was denied for the fingerprint reader.",
+    "د ګوتې لوستونکي USB اجازه رد شوه.",
+    "اجازه USB برای دستگاه اثر انگشت رد شد.",
+  ],
+  readerFailed: [
+    "The fingerprint reader could not start.",
+    "د ګوتې لوستونکی پیل نه شو.",
+    "دستگاه اثر انگشت شروع نشد.",
+  ],
+  readerClosed: [
+    "The fingerprint reader was closed.",
+    "د ګوتې لوستونکی وتړل شو.",
+    "دستگاه اثر انگشت بسته شد.",
+  ],
+  fingerprintMismatch: [
+    "Use the same finger for all three presses.",
+    "د دریو ځلو لپاره هماغه ګوته وکاروئ.",
+    "برای هر سه بار همان انگشت را استفاده کنید.",
+  ],
+  fingerprintExists: [
+    "This fingerprint is already registered.",
+    "دا ګوتې نښه له مخکې ثبت ده.",
+    "این اثر انگشت قبلاً ثبت شده است.",
+  ],
+  fingerprintFailed: [
+    "Could not create a fingerprint template. Try again.",
+    "د ګوتې نښه جوړه نه شوه. بیا هڅه وکړئ.",
+    "قالب اثر انگشت ساخته نشد. دوباره تلاش کنید.",
+  ],
+  fingerprintTimeout: [
+    "No finger was read in time. Try again.",
+    "ګوته په وخت ونه لوستل شوه. بیا هڅه وکړئ.",
+    "اثر انگشت در زمان مقرر خوانده نشد. دوباره تلاش کنید.",
+  ],
+  fingerprintNoMatch: [
+    "No stored fingerprint matched.",
+    "له ثبت شوو نښو سره سمون ونه موندل شو.",
+    "با اثر انگشت ذخیره‌شده مطابقت نداشت.",
+  ],
+  fingerprintNoRecords: [
+    "This customer has no saved records.",
+    "د دې پېرودونکي ثبت نشته.",
+    "برای این مشتری ثبتی ذخیره نشده است.",
+  ],
+  fpLocal: ["On-device matching", "په وسیله کې پېژندنه", "شناسایی روی دستگاه"],
+  fpPermission: [
+    "Allow USB access on your phone.",
+    "په موبایل کې د USB اجازه ورکړئ.",
+    "اجازه USB را در گوشی بدهید.",
+  ],
+  fpReading: [
+    "Reading your finger…",
+    "ګوته لوستل کېږي…",
+    "در حال خواندن انگشت…",
+  ],
+  fpLift: ["Lift your finger", "ګوته پورته کړئ", "انگشت را بردارید"],
+  fpVerify: [
+    "One final scan to verify",
+    "د تایید لپاره یو وروستی سکین",
+    "یک اسکن نهایی برای تأیید",
+  ],
+  fpVerifyHint: [
+    "Lift, then place the same finger once more to finish.",
+    "ګوته پورته او د بشپړولو لپاره بیا هماغه ګوته کېږدئ.",
+    "انگشت را بردارید و برای تکمیل دوباره همان انگشت را بگذارید.",
+  ],
+  fpVerificationMismatch: [
+    "Verification did not match. Lift and try the same finger.",
+    "تایید برابر نه شو. ګوته پورته او بیا هماغه ګوته کېږدئ.",
+    "تأیید مطابقت نداشت. انگشت را بردارید و همان انگشت را دوباره بگذارید.",
+  ],
+  fpReposition: [
+    "Reposition your finger and try again.",
+    "د ګوتې ځای سم کړئ او بیا هڅه وکړئ.",
+    "جای انگشت را تنظیم کنید و دوباره تلاش کنید.",
+  ],
+  fpSuccess: ["Ready — all set", "چمتو — بشپړ شو", "آماده — تکمیل شد"],
+  fpNeedsAttention: ["Let’s try again", "بیا هڅه وکړو", "دوباره تلاش کنیم"],
+  fpInterrupted: [
+    "Scanning paused. Tap Retry when you return.",
+    "سکین ودرېد. د راستنېدو پر وخت بیا هڅه وکړئ.",
+    "اسکن متوقف شد. پس از بازگشت دوباره تلاش کنید.",
+  ],
+  fpReaderCheck: [
+    "Check fingerprint reader",
+    "د ګوتې لوستونکی وګورئ",
+    "بررسی دستگاه اثر انگشت",
+  ],
+  fpReaderReady: [
+    "Reader connected and USB permission granted.",
+    "لوستونکی وصل دی او د USB اجازه ورکړل شوې.",
+    "دستگاه متصل است و اجازه USB داده شده است.",
+  ],
+  fpNoEnrolled: [
+    "No fingerprints are saved in this shop yet. Open a customer profile and choose Add fingerprint first.",
+    "په دې دوکان کې لا د ګوتو نښې نه دي ثبت شوې. لومړی د پېرودونکي پاڼه پرانیزئ او د ګوتې نښه زیاته کړئ.",
+    "هنوز اثر انگشتی در این دکان ثبت نشده است. ابتدا پروفایل مشتری را باز کنید و افزودن اثر انگشت را انتخاب کنید.",
+  ],
+  fpTryAgain: ["Try again", "بیا هڅه وکړئ", "تلاش دوباره"],
+  fpManualSearch: ["Search manually", "لاسي لټون", "جستجوی دستی"],
+  fpNewCustomer: [
+    "Start new customer record",
+    "د نوي پېرودونکي ثبت پیل کړئ",
+    "شروع ثبت مشتری جدید",
+  ],
+  viewCustomer: ["View customer", "پېرودونکی وګورئ", "دیدن مشتری"],
+  fpProfile: ["Customer profile", "د پېرودونکي پېژندپاڼه", "پروفایل مشتری"],
+  fpFind: [
+    "Find by fingerprint",
+    "د ګوتې نښې په وسیله ومومئ",
+    "یافتن با اثر انگشت",
+  ],
+  fpReturning: [
+    "Find returning customer",
+    "پخوانی پېرودونکی ومومئ",
+    "یافتن مشتری قبلی",
+  ],
+  fpPrimary: ["Primary finger", "اصلي ګوته", "انگشت اصلی"],
+  fpBackup: [
+    "Backup finger (optional)",
+    "دویمه ګوته (اختیاري)",
+    "انگشت پشتیبان (اختیاری)",
+  ],
+  fpEnrolled: ["Enrolled", "ثبت شوی", "ثبت شده"],
+  fpNotEnrolled: ["Not enrolled", "نه دی ثبت شوی", "ثبت نشده"],
+  fingerprintOptional: [
+    "Fingerprint is optional. You can continue and save without scanning.",
+    "د ګوتې نښه اختیاري ده. له سکین پرته دوام ورکړئ او ثبت وساتئ.",
+    "اثر انگشت اختیاری است. می‌توانید بدون اسکن ادامه دهید و ذخیره کنید.",
+  ],
+  fpAdd: ["Add fingerprint", "د ګوتې نښه زیاته کړئ", "افزودن اثر انگشت"],
+  fpReplace: ["Replace fingerprint", "د ګوتې نښه بدله کړئ", "تعویض اثر انگشت"],
+  fpRemove: ["Remove fingerprint", "د ګوتې نښه لرې کړئ", "حذف اثر انگشت"],
+  fpReason: ["Reason for this change", "د دې بدلون دلیل", "دلیل این تغییر"],
+  fpManage: ["Manage fingerprints", "د ګوتو نښې اداره کړئ", "مدیریت اثر انگشت"],
+  fpSkip: [
+    "Continue without fingerprint",
+    "د ګوتې نښې پرته دوام",
+    "ادامه بدون اثر انگشت",
+  ],
+  fpSkipHint: [
+    "Select a reason if no fingerprint can be enrolled.",
+    "که د ګوتې نښه نه ثبتېږي، دلیل وټاکئ.",
+    "اگر اثر انگشت ثبت نمی‌شود، دلیل را انتخاب کنید.",
+  ],
+  readerUnavailable: [
+    "Reader unavailable",
+    "لوستونکی نشته",
+    "دستگاه در دسترس نیست",
+  ],
+  customerUnable: [
+    "Customer unable to scan",
+    "پېرودونکی سکین نه شي کولی",
+    "مشتری قادر به اسکن نیست",
+  ],
+  customerDeclined: [
+    "Customer declined",
+    "پېرودونکي ونه منله",
+    "مشتری نپذیرفت",
+  ],
+  otherReason: ["Other reason", "بل دلیل", "دلیل دیگر"],
+  fpSkipNote: ["Additional note", "اضافي یادښت", "یادداشت اضافی"],
+  fingerprintSkipRequired: [
+    "Enroll a finger or select a reason to continue without one.",
+    "ګوته ثبت کړئ یا د هغې پرته د دوام دلیل وټاکئ.",
+    "انگشت را ثبت کنید یا دلیل ادامه بدون آن را انتخاب کنید.",
+  ],
+  fingerprintOwnerOnly: [
+    "Only the owner can replace or remove fingerprints.",
+    "یوازې مالک د ګوتو نښې بدلولی یا لرې کولی شي.",
+    "فقط مالک می‌تواند اثر انگشت را تعویض یا حذف کند.",
+  ],
+  fingerprintReasonRequired: [
+    "Enter a reason before changing a saved fingerprint.",
+    "د ثبت شوې ګوتې نښې بدلولو مخکې دلیل ولیکئ.",
+    "پیش از تغییر اثر انگشت ذخیره‌شده، دلیل را بنویسید.",
+  ],
+  fingerprintInvalid: [
+    "Fingerprint data is invalid. Please enroll again.",
+    "د ګوتې نښې معلومات سم نه دي. بیا یې ثبت کړئ.",
+    "اطلاعات اثر انگشت معتبر نیست. دوباره ثبت کنید.",
+  ],
+  fingerprintAmbiguous: [
+    "The match is uncertain. Try again or search manually.",
+    "سمون روښانه نه دی. بیا هڅه یا لاسي لټون وکړئ.",
+    "مطابقت قطعی نیست. دوباره تلاش یا دستی جستجو کنید.",
+  ],
+  fingerprintBusy: [
+    "Another scan is active. Close it before starting again.",
+    "بل سکین روان دی. د بیا پیل مخکې یې وتړئ.",
+    "اسکن دیگری فعال است. پیش از شروع دوباره آن را ببندید.",
+  ],
+  fingerprintUpdateRequired: [
+    "Install the updated Android build to use this scanner.",
+    "د دې سکینر لپاره د Android نوې نسخه نصب کړئ.",
+    "برای این اسکنر نسخه جدید Android را نصب کنید.",
+  ],
+  fpAudit: ["Fingerprint changes", "د ګوتې نښې بدلونونه", "تغییرات اثر انگشت"],
+  fpConfirmRemove: [
+    "Remove this fingerprint? This will stop matching this finger.",
+    "دا د ګوتې نښه لرې شي؟ بیا به دا ګوته نه پېژندل کېږي.",
+    "این اثر انگشت حذف شود؟ این انگشت دیگر شناسایی نمی‌شود.",
+  ],
+  fpSaved: ["Fingerprint saved", "د ګوتې نښه ثبت شوه", "اثر انگشت ذخیره شد"],
+  customerHistory: [
+    "Transaction history",
+    "د راکړې ورکړې تاریخچه",
+    "تاریخچه معاملات",
   ],
 } as const;
 export type TextKey = keyof typeof copy;

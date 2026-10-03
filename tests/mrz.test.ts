@@ -11,7 +11,12 @@ const lines = [
 const text = lines.join("\n");
 const expected = {
   ok: true,
-  fields: { name: "TEST PERSON EXAMPLE", idNumber: "1399-1234-00123" },
+  fields: {
+    name: "TEST PERSON EXAMPLE",
+    idNumber: "1399-1234-00123",
+    gender: "F",
+    nationality: "AFG",
+  },
 };
 const replaceAt = (value: string, index: number, char: string) =>
   value.slice(0, index) + char + value.slice(index + 1);
@@ -153,9 +158,13 @@ test("conflicting names require a retake even when numeric checks pass", () => {
   });
 });
 
-test("only name and ID are returned, never raw MRZ, dates or inferred relatives/address", () => {
+test("MRZ returns name, ID, gender and nationality, never a guessed birth century or relatives", () => {
   const result = readAfghanMrz([text]);
   assert.deepEqual(result, expected);
   assert.equal(JSON.stringify(result).includes("990101"), false);
   assert.equal(JSON.stringify(result).includes("I<AFG"), false);
+  if (result.ok) {
+    assert.equal("dateOfBirth" in result.fields, false);
+    assert.equal("fatherName" in result.fields, false);
+  }
 });

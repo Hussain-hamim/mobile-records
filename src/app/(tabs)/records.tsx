@@ -1,3 +1,4 @@
+import { FingerprintSearch } from "../../components/fingerprint-search";
 import { useMemo, useState } from "react";
 import { FlatList, View } from "react-native";
 import { router } from "expo-router";
@@ -51,6 +52,7 @@ export default function Records() {
         value={query}
         onChangeText={setQuery}
       />
+      <FingerprintSearch />
       <Row style={{ marginBottom: 15 }}>
         {(["all", "buy", "sell"] as const).map((k) => (
           <Chip

@@ -28,5 +28,25 @@
     "source": "https://raw.githubusercontent.com/MoazEb/tac-database/29ed8f61c6bfad300ce6b56f36c3876c4dc6a6d9/LICENSE",
     "path": "assets/licenses/TAC-LICENSE",
     "sha256": "74fd730ed34b0820c140fc0d8eddcee47904da27008613f5e37f6d5eaa2e3552"
+  },
+  {
+    "source": "https://raw.githubusercontent.com/DoubangoTelecom/tesseractMRZ/1e7adfecda5f3c9ae1fb12cf6b4b8c3958c63e46/tessdata_fast/mrz.traineddata",
+    "path": "modules/record-ocr/android/src/main/assets/tessdata/mrz.traineddata",
+    "sha256": "ece2a54f125a73792f9cec74e6f8e62f6e5e00c7f19153ba865af689be5b5f01"
+  },
+  {
+    "source": "https://raw.githubusercontent.com/DoubangoTelecom/tesseractMRZ/1e7adfecda5f3c9ae1fb12cf6b4b8c3958c63e46/LICENSE",
+    "path": "assets/licenses/MRZ-LICENSE",
+    "sha256": "2b43756e513c505edd233a60ebe94bd7596de9bea2419e12391632b6efeecb3c"
+  },
+  {
+    "source": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/fas.traineddata",
+    "path": "modules/record-ocr/android/src/main/assets/tessdata/fas.traineddata",
+    "sha256": "db1c0a91208aff00d3cf1ed2c1d23f76419afd5f024688b4f71adc3f2ce4a505"
+  },
+  {
+    "source": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/pus.traineddata",
+    "path": "modules/record-ocr/android/src/main/assets/tessdata/pus.traineddata",
+    "sha256": "f15550bfe3a20ca781cf5afb7b2af6ee769c6521cf4bb990848e72856b484600"
   }
 ]

@@ -1,36 +1,43 @@
+import * as Crypto from "expo-crypto";
+import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
-import * as Crypto from "expo-crypto";
-import { useApp } from "../state/app-context";
-import {
-  emptyPerson,
-  emptyPhone,
-  type Draft,
-  type Phone,
-} from "../domain/models";
-import { normalizeImei, validImei, validateDraft } from "../domain/validation";
-import {
-  Button,
-  Card,
-  Chip,
-  Field,
-  Disclosure,
-  SectionTitle,
-  Heading,
-  Icon,
-  Notice,
-  Row,
-  Screen,
-  Txt,
-  colors,
-  errorText,
-} from "../components/ui";
+import { FingerprintCards } from "../components/fingerprint-cards";
+import { FingerprintPrompt } from "../components/fingerprint-prompt";
 import { PersonFields } from "../components/person-fields";
 import { Scanner } from "../components/scanner";
-import { formatMoney } from "../domain/format";
-import { lookupTac } from "../services/tac";
+import {
+    Button,
+    Card,
+    Chip,
+    Disclosure,
+    Field,
+    Heading,
+    Icon,
+    IconButton,
+    Notice,
+    Row,
+    Screen,
+    SectionTitle,
+    Txt,
+    colors,
+    errorText,
+} from "../components/ui";
 import { fillDemoStep } from "../domain/demo-data";
+import { draftFingerprints, scanTemplates } from "../domain/fingerprints";
+import {
+    emptyPerson,
+    emptyPhone,
+    type Draft,
+    type Phone,
+} from "../domain/models";
+import {
+    applyPhoneSuggestions,
+    resolvePhoneSuggestions,
+} from "../domain/phone-lookup";
+import { normalizeImei, validateDraft } from "../domain/validation";
+import { lookupTac } from "../services/tac";
+import { useApp } from "../state/app-context";
 export default function NewRecord() {
   const app = useApp();
   const { t } = app;
@@ -40,17 +47,20 @@ export default function NewRecord() {
     customer?: string;
     scan?: string;
   }>();
+  const preset = app.customers.find((c) => c.id === params.customer);
   const [draft, setDraft] = useState<Draft>(
     () =>
-      app.drafts.find((d) => d.id === params.draft) ?? {
+      (() => {
+        const saved = app.drafts.find((d) => d.id === params.draft);
+        return saved ? { ...saved, step: Math.min(saved.step, 1) } : null;
+      })() ?? {
         id: Crypto.randomUUID(),
         direction: params.direction === "sell" ? "sell" : "buy",
         phone: emptyPhone(),
-        customer:
-          app.customers.find((c) => c.id === params.customer)?.person ??
-          emptyPerson(),
+        customer: preset?.person ?? emptyPerson(),
         customerId: params.customer ?? "",
-        customerConfirmed: false,
+        customerConfirmed: true,
+        fingerprints: [],
         price: "",
         createdAt: new Date().toISOString(),
         step: 0,
@@ -60,10 +70,35 @@ export default function NewRecord() {
     params.scan === "imei" ? "imei" : null,
   );
   const [imeiTarget, setImeiTarget] = useState<"imei1" | "imei2">("imei1");
+  const [showSecondImei, setShowSecondImei] = useState(false);
+  const secondImeiVisible = showSecondImei || Boolean(draft.phone.imei2);
   const [choosing, setChoosing] = useState(false);
+  const [fingerFind, setFingerFind] = useState(false);
+  const currentCustomer = app.customers.find((c) => c.id === draft.customerId);
+  const fingers = draftFingerprints(draft, currentCustomer);
+  function chooseCustomer(id: string) {
+    const c = app.customers.find((c) => c.id === id);
+    if (!c) return;
+    patch({
+      customer: { ...c.person },
+      customerId: c.id,
+      fingerprints: [],
+      fingerprintTemplate: undefined,
+      fingerprintSkip: undefined,
+      customerConfirmed: true,
+    });
+    setChoosing(false);
+  }
   const [error, setError] = useState("");
   const [hint, setHint] = useState("");
   const [busy, setBusy] = useState(false);
+  const lookupRequest = useRef(0);
+  useEffect(
+    () => () => {
+      lookupRequest.current++;
+    },
+    [],
+  );
   const latest = useRef(draft);
   const completed = useRef(false);
   const write = useRef(app.saveDraft);
@@ -81,7 +116,7 @@ export default function NewRecord() {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (!completed.current)
-        void persist(draft).catch((e) => setError(errorText(e, t)));
+        void persist(latest.current).catch((e) => setError(errorText(e, t)));
     }, 300);
     return () => clearTimeout(timer);
   }, [draft, t, persist]);
@@ -95,6 +130,11 @@ export default function NewRecord() {
     setDraft((d) => ({ ...d, ...values }));
   }
   function phone(key: keyof Phone, value: string) {
+    if (key === "imei1" || key === "imei2") {
+      lookupRequest.current++;
+      setBusy(false);
+      setHint("");
+    }
     setDraft((d) => ({ ...d, phone: { ...d.phone, [key]: value } }));
   }
   function fillDemo() {
@@ -110,36 +150,29 @@ export default function NewRecord() {
         normalizeImei(draft.phone.imei1),
       ) && draft.phone.imei1.length > 0,
   );
-  async function lookup() {
+  async function lookup(
+    value = draft.phone.imei1,
+    target: "imei1" | "imei2" = "imei1",
+  ) {
+    const request = ++lookupRequest.current;
+    const baseline = draft.phone;
     setBusy(true);
     setHint("");
+    setError("");
     try {
-      const imei = normalizeImei(draft.phone.imei1);
-      if (!validImei(imei)) throw new Error("invalidImei");
-      const previous = history[0];
-      if (previous) {
+      const imei = normalizeImei(value);
+      const found = await resolvePhoneSuggestions(imei, app.records, lookupTac);
+      if (request !== lookupRequest.current) return;
+      if (found)
         setDraft((d) => ({
           ...d,
-          phone: {
-            ...previous.phone,
-            imei1: imei,
-            imei2: d.phone.imei2,
-            condition: "",
-            notes: "",
-          },
+          phone: applyPhoneSuggestions(d.phone, baseline, found, target, imei),
         }));
-        setHint(t("suggested"));
-      } else {
-        const found = await lookupTac(imei);
-        if (found) {
-          setDraft((d) => ({ ...d, phone: { ...d.phone, ...found } }));
-          setHint(t("suggested"));
-        } else setHint(t("lookupMissing"));
-      }
+      setHint(t(found ? "suggested" : "lookupMissing"));
     } catch (e) {
-      setError(errorText(e, t));
+      if (request === lookupRequest.current) setError(errorText(e, t));
     } finally {
-      setBusy(false);
+      if (request === lookupRequest.current) setBusy(false);
     }
   }
   function advance() {
@@ -151,9 +184,7 @@ export default function NewRecord() {
           ) || (!draft.phone.model.trim() ? "modelRequired" : "")
         : !draft.customer.name.trim() || !draft.customer.idNumber.trim()
           ? "customerRequired"
-          : !draft.customerConfirmed
-            ? "confirmCustomer"
-            : "";
+          : "";
     if (issue) {
       setError(errorText(new Error(issue), t));
       return;
@@ -165,12 +196,15 @@ export default function NewRecord() {
   async function finish() {
     setBusy(true);
     setError("");
+    const ready = { ...latest.current, customerConfirmed: true };
+    latest.current = ready;
+    setDraft(ready);
     try {
-      const errors = validateDraft(draft);
+      const errors = validateDraft(ready);
       if (errors.length) throw new Error(errors[0]);
       completed.current = true;
-      await saveChain.current;
-      const r = await app.finalize(draft);
+      await persist(ready);
+      const r = await app.finalize(ready);
       router.replace({ pathname: "/record/[id]", params: { id: r.id } });
     } catch (e) {
       completed.current = false;
@@ -194,7 +228,7 @@ export default function NewRecord() {
         }
       />
       <Row style={{ marginBottom: 24 }}>
-        {(["phoneDetails", "customerDetails", "review"] as const).map(
+        {(["phoneDetails", "customerDetails"] as const).map(
           (k, i) => (
             <View
               key={k}
@@ -230,7 +264,7 @@ export default function NewRecord() {
             onPress={fillDemo}
           />
           <Txt size={11} muted style={{ textAlign: "center" }}>
-            {t(draft.step === 2 ? "demoFillReviewHint" : "demoFillHint")}
+            {t("demoFillHint")}
           </Txt>
         </View>
       ) : null}
@@ -265,15 +299,17 @@ export default function NewRecord() {
                   }}
                 />
               </View>
-              <Button
-                small
-                secondary
-                label="IMEI 2"
-                onPress={() => {
-                  setImeiTarget("imei2");
-                  setScanner("imei");
-                }}
-              />
+              {secondImeiVisible && (
+                <Button
+                  small
+                  secondary
+                  label="IMEI 2"
+                  onPress={() => {
+                    setImeiTarget("imei2");
+                    setScanner("imei");
+                  }}
+                />
+              )}
             </Row>
             <Field
               label={t("imei1") + " *"}
@@ -282,13 +318,25 @@ export default function NewRecord() {
               numeric
               keyboardType="numeric"
             />
-            <Field
-              label={t("imei2")}
-              value={draft.phone.imei2}
-              onChangeText={(v) => phone("imei2", v)}
-              numeric
-              keyboardType="numeric"
-            />
+            {secondImeiVisible ? (
+              <Field
+                label={t("imei2")}
+                value={draft.phone.imei2}
+                onChangeText={(v) => phone("imei2", v)}
+                numeric
+                keyboardType="numeric"
+              />
+            ) : (
+              <View style={{ marginBottom: 16 }}>
+                <Button
+                  small
+                  secondary
+                  icon="plus"
+                  label={t("addSecondImei")}
+                  onPress={() => setShowSecondImei(true)}
+                />
+              </View>
+            )}
             <Button
               small
               secondary
@@ -306,14 +354,17 @@ export default function NewRecord() {
           </Card>
           <Card>
             <SectionTitle title={t("essentials")} icon="cellphone" />
-            {(["brand", "model"] as const).map((k) => (
-              <Field
-                key={k}
-                label={t(k) + (k === "model" ? " *" : "")}
-                value={draft.phone[k]}
-                onChangeText={(v) => phone(k, v)}
-              />
-            ))}
+            <Row style={{ alignItems: "flex-start" }}>
+              {(["brand", "model"] as const).map((k) => (
+                <View key={k} style={{ flex: 1, minWidth: 0 }}>
+                  <Field
+                    label={t(k) + (k === "model" ? " *" : "")}
+                    value={draft.phone[k]}
+                    onChangeText={(v) => phone(k, v)}
+                  />
+                </View>
+              ))}
+            </Row>
             <Field
               label={t("price") + " *"}
               value={draft.price}
@@ -360,23 +411,34 @@ export default function NewRecord() {
               />
             </View>
           </Row>
-          <Button
-            small
-            secondary
-            label={t("chooseCustomer")}
-            onPress={() => setChoosing(!choosing)}
-          />
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
+              marginBottom: 16,
+            }}
+          >
+            <View style={{ flex: 1 }}>
+              <Button
+                secondary
+                label={t("chooseCustomer")}
+                onPress={() => setChoosing((open) => !open)}
+              />
+            </View>
+            <IconButton
+              icon="fingerprint"
+              label={t("fpReturning")}
+              onPress={() => setFingerFind(true)}
+            />
+          </View>
           {choosing ? (
             <Card>
               {app.customers.map((c) => (
                 <Pressable
                   key={c.id}
                   onPress={() => {
-                    patch({
-                      customer: { ...c.person },
-                      customerId: c.id,
-                      customerConfirmed: false,
-                    });
+                    chooseCustomer(c.id);
                     setChoosing(false);
                   }}
                   style={{
@@ -393,89 +455,54 @@ export default function NewRecord() {
               ))}
             </Card>
           ) : null}
+          {fingerFind ? (
+            <FingerprintPrompt
+              mode="identify"
+              templates={scanTemplates(app.customers)}
+              onClose={() => setFingerFind(false)}
+              onIdentified={(id) => {
+                setFingerFind(false);
+                chooseCustomer(id);
+              }}
+            />
+          ) : null}
           <View style={{ height: 16 }} />
           <Card>
             <SectionTitle title={t("customerDetails")} icon="account-outline" />
             <PersonFields
               value={draft.customer}
-              onChange={(customer) =>
-                patch({ customer, customerConfirmed: false })
-              }
+              onChange={(customer) => patch({ customer })}
             />
-            <Pressable
-              style={{
-                marginTop: 20,
-                padding: 14,
-                backgroundColor: colors.mint,
-                borderRadius: 14,
+          </Card>
+          <View style={{ marginTop: 16 }}>
+            <Txt muted size={12} style={{ marginBottom: 8 }}>
+              {t("fingerprintOptional")}
+            </Txt>
+            <FingerprintCards
+              entries={fingers}
+              customerId={draft.customerId || draft.id}
+              manageStored={false}
+              temporaryIds={(draft.fingerprints ?? []).map((f) => f.id)}
+              onChange={async (entries) => {
+                const next: Draft = {
+                  ...latest.current,
+                  fingerprints: entries.filter(
+                    (f) =>
+                      !currentCustomer?.fingerprints?.some(
+                        (saved) => saved.id === f.id,
+                      ) && f.id !== `legacy-${currentCustomer?.id}`,
+                  ),
+                  fingerprintTemplate: undefined,
+                  fingerprintSkip: undefined,
+                };
+                // Enrollment is not accepted until its encrypted draft is on disk.
+                latest.current = next;
+                setDraft(next);
+                await persist(next);
               }}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: draft.customerConfirmed }}
-              onPress={() =>
-                patch({ customerConfirmed: !draft.customerConfirmed })
-              }
-            >
-              <Row>
-                <Icon
-                  name={
-                    draft.customerConfirmed
-                      ? "checkbox-marked"
-                      : "checkbox-blank-outline"
-                  }
-                  color={colors.green}
-                />
-                <View style={{ flex: 1 }}>
-                  <Txt size={13}>{t("confirmCustomer")}</Txt>
-                </View>
-              </Row>
-            </Pressable>
-          </Card>
-        </>
-      ) : null}
-      {draft.step === 2 ? (
-        <>
-          <Notice message={t("draftForm")} />
-          <Card>
-            <SectionTitle title={t("phoneDetails")} icon="cellphone" />
-            <Txt bold size={23}>
-              {draft.phone.brand} {draft.phone.model}
-            </Txt>
-            <Txt style={{ writingDirection: "ltr", marginTop: 8 }}>
-              {draft.phone.imei1}
-            </Txt>
-            {draft.phone.imei2 ? <Txt>{draft.phone.imei2}</Txt> : null}
-            <Txt muted>
-              {[draft.phone.color, draft.phone.storage, draft.phone.ram]
-                .filter(Boolean)
-                .join(" · ")}
-            </Txt>
-            <Txt bold size={26} color={colors.green} style={{ marginTop: 14 }}>
-              {formatMoney(draft.price, app.language)}
-            </Txt>
-          </Card>
-          <Card>
-            <Txt muted size={12}>
-              {t("customerDetails")}
-            </Txt>
-            {Object.entries(draft.customer)
-              .filter(([, v]) => v)
-              .map(([k, v]) => (
-                <View key={k} style={{ marginBottom: 9 }}>
-                  <Txt size={11} muted>
-                    {t(k as keyof typeof draft.customer)}
-                  </Txt>
-                  <Txt>{v}</Txt>
-                </View>
-              ))}
-          </Card>
-          <Card>
-            <Txt muted size={12}>
-              {t("shopDetails")}
-            </Txt>
-            <Txt bold>{app.membership?.profile.shopName}</Txt>
-            <Txt>{app.membership?.profile.name}</Txt>
-            <Txt muted>{app.membership?.profile.address}</Txt>
-          </Card>
+              onDuplicate={chooseCustomer}
+            />
+          </View>
         </>
       ) : null}
       <Row style={{ marginTop: 12 }}>
@@ -492,34 +519,37 @@ export default function NewRecord() {
         ) : null}
         <View style={{ flex: 1 }}>
           <Button
-            label={t(draft.step === 2 ? "saveRecord" : "next")}
+            label={t(draft.step === 0 ? "next" : "saveRecord")}
             loading={busy}
             icon={
-              draft.step === 2
-                ? "check"
-                : app.rtl
+              draft.step === 0
+                ? app.rtl
                   ? "arrow-left"
                   : "arrow-right"
+                : "check"
             }
-            onPress={() => (draft.step === 2 ? void finish() : advance())}
+            onPress={() => (draft.step === 0 ? advance() : void finish())}
           />
         </View>
       </Row>
       <Row style={{ justifyContent: "center", marginTop: 16 }}>
         <Icon name="cloud-check-outline" size={16} color={colors.muted} />
         <Txt size={11} muted>
-          {t("autoSaved")}
+          {t(app.demo ? "demoDraftHint" : "autoSaved")}
         </Txt>
       </Row>
       {scanner ? (
         <Scanner
           mode={scanner}
           onClose={() => setScanner(null)}
-          onImei={(value) => phone(imeiTarget, value)}
+          onImei={(value) => {
+            phone(imeiTarget, value);
+            void lookup(value, imeiTarget);
+          }}
           onPerson={(person) =>
             patch({
               customer: { ...draft.customer, ...person },
-              customerConfirmed: false,
+              customerConfirmed: true,
             })
           }
         />

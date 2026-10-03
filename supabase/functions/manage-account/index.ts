@@ -1,5 +1,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2.117.2";
-const headers = { "Content-Type": "application/json" };
+import {
+  issueCode,
+  responseHeaders as headers,
+} from "../_shared/login-codes.ts";
 Deno.serve(async (request) => {
   try {
     if (request.method !== "POST")
@@ -23,20 +26,6 @@ Deno.serve(async (request) => {
       .eq("user_id", user.id)
       .eq("active", true);
     if (membershipError || !own?.length) throw new Error("noAccess");
-    if (body.action === "password") {
-      if (typeof body.password !== "string" || body.password.length < 12)
-        throw new Error("Password requires 12 characters");
-      const updated = await admin.auth.admin.updateUserById(user.id, {
-        password: body.password,
-      });
-      if (updated.error) throw updated.error;
-      const status = await admin
-        .from("account_status")
-        .update({ must_change_password: false })
-        .eq("user_id", user.id);
-      if (status.error) throw status.error;
-      return Response.json({ ok: true }, { headers });
-    }
     const { data: status } = await admin
       .from("account_status")
       .select("*")
@@ -48,6 +37,36 @@ Deno.serve(async (request) => {
       !own.some((m) => m.shop_id === body.shopId && m.role === "owner")
     )
       throw new Error("noAccess");
+    if (body.action === "issue-code") {
+      const target = await admin
+        .from("memberships")
+        .select("user_id")
+        .eq("shop_id", body.shopId)
+        .eq("user_id", body.userId)
+        .eq("role", "staff")
+        .eq("active", true)
+        .maybeSingle();
+      if (target.error || !target.data) throw new Error("noAccess");
+      // Do not let a shop owner assume an account with access to another shop.
+      const scopes = await admin
+        .from("memberships")
+        .select("shop_id,role")
+        .eq("user_id", body.userId)
+        .eq("active", true);
+      if (
+        scopes.error ||
+        scopes.data.some((m) => m.shop_id !== body.shopId || m.role !== "staff")
+      )
+        throw new Error("Contact platform administrator");
+      const platform = await admin.rpc("is_platform_administrator", {
+        p_user: body.userId,
+      });
+      if (platform.error || platform.data)
+        throw new Error("Contact platform administrator");
+      return Response.json(await issueCode(admin, body.userId, user.id), {
+        headers,
+      });
+    }
     if (body.action === "list") {
       const { data, error } = await admin
         .from("memberships")
@@ -81,10 +100,8 @@ Deno.serve(async (request) => {
         !/^\+[1-9]\d{7,14}$/.test(body.phone)
       )
         throw new Error("Invalid phone");
-      const password = crypto.randomUUID() + "aA!";
       const { data, error } = await admin.auth.admin.createUser({
         phone: body.phone,
-        password,
         phone_confirm: true,
       });
       if (error || !data.user)
@@ -96,20 +113,20 @@ Deno.serve(async (request) => {
           .from("account_status")
           .insert({ user_id: data.user.id, must_change_password: true });
         if (s.error) throw s.error;
-        const m = await admin
-          .from("memberships")
-          .insert({
-            user_id: data.user.id,
-            shop_id: body.shopId,
-            role: "staff",
-          });
+        const m = await admin.from("memberships").insert({
+          user_id: data.user.id,
+          shop_id: body.shopId,
+          role: "staff",
+        });
         if (m.error) throw m.error;
       } catch (e) {
         await admin.from("account_status").delete().eq("user_id", data.user.id);
         await admin.auth.admin.deleteUser(data.user.id);
         throw e;
       }
-      return Response.json({ password }, { headers });
+      return Response.json(await issueCode(admin, data.user.id, user.id), {
+        headers,
+      });
     }
     throw new Error("Unknown action");
   } catch (error) {

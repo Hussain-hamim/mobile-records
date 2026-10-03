@@ -1,22 +1,28 @@
-import { View, Pressable, StyleSheet } from "react-native";
 import { router } from "expo-router";
-import { useApp } from "../../state/app-context";
+import { useState } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
+import { FingerprintPrompt } from "../../components/fingerprint-prompt";
+import { RecordRow } from "../../components/record-row";
 import {
-  Card,
   Button,
+  Card,
+  Empty,
   Icon,
   IconButton,
+  Notice,
   Row,
   Screen,
   Txt,
-  Empty,
   colors,
 } from "../../components/ui";
-import { RecordRow } from "../../components/record-row";
 import { formatDate, localDay } from "../../domain/format";
+import { scanTemplates } from "../../domain/fingerprints";
+import { useApp } from "../../state/app-context";
 export default function Home() {
   const app = useApp();
   const { t, rtl } = app;
+  const [finger, setFinger] = useState(false);
+  const [fpError, setFpError] = useState("");
   const today = app.records.filter(
     (r) => localDay(r.occurredAt) === localDay(new Date().toISOString()),
   );
@@ -121,28 +127,29 @@ export default function Home() {
       </Row>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={t("quickStart")}
-        onPress={() =>
-          router.push({ pathname: "/new-record", params: { scan: "imei" } })
-        }
+        accessibilityLabel={t("scanFingerprint")}
+        onPress={() => {
+          setFpError("");
+          setFinger(true);
+        }}
         style={({ pressed }) => [styles.scan, { opacity: pressed ? 0.75 : 1 }]}
       >
         <Row>
           <View
             style={{
-              backgroundColor: colors.lime,
+              backgroundColor: colors.mint,
               padding: 10,
               borderRadius: 14,
             }}
           >
-            <Icon name="barcode-scan" color={colors.ink} size={24} />
+            <Icon name="fingerprint" color={colors.ink} size={24} />
           </View>
           <View style={{ flex: 1 }}>
             <Txt bold size={14}>
-              {t("quickStart")}
+              {t("scanFingerprint")}
             </Txt>
             <Txt muted size={11}>
-              {t("scanIntro")}
+              {t("scanFingerprintIntro")}
             </Txt>
           </View>
           <Icon
@@ -151,6 +158,7 @@ export default function Home() {
           />
         </Row>
       </Pressable>
+      <Notice message={fpError} tone="error" />
       <Card
         style={{
           backgroundColor: colors.navy,
@@ -271,6 +279,20 @@ export default function Home() {
           />
         ) : null}
       </Row>
+      {finger ? (
+        <FingerprintPrompt
+          mode="identify"
+          templates={scanTemplates(app.customers)}
+          onIdentified={(customerId) => {
+            setFinger(false);
+            router.push({
+              pathname: "/customer/[id]",
+              params: { id: customerId },
+            });
+          }}
+          onClose={() => setFinger(false)}
+        />
+      ) : null}
     </Screen>
   );
 }

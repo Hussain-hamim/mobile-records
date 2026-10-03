@@ -3,7 +3,10 @@ import type { Person } from "./models";
 export type MrzError =
   "mrzNotFound" | "mrzInvalid" | "mrzUnsupported" | "mrzAmbiguous";
 export type MrzResult =
-  | { ok: true; fields: Pick<Person, "name" | "idNumber"> }
+  | {
+      ok: true;
+      fields: Pick<Person, "name" | "idNumber" | "gender" | "nationality">;
+    }
   | { ok: false; error: MrzError };
 
 // ICAO Doc 9303 Parts 3/5, TD1. No network, persistence, or raw text in results.
@@ -24,8 +27,8 @@ export function mrzCheckDigit(value: string): string {
 
 function validDate(value: string) {
   if (!/^\d{6}$/.test(value)) return false;
-  // Validate month/day only. The form does not store birth/expiry dates, so we
-  // deliberately do not guess the century or infer age/document validity.
+  // Validate month/day only. Birth dates come from the printed full date; MRZ
+  // years do not establish the century, age or document validity.
   const year = 2000 + Number(value.slice(0, 2));
   const month = Number(value.slice(2, 4));
   const day = Number(value.slice(4, 6));
@@ -88,6 +91,8 @@ function parseLines(a: string, b: string, c: string): MrzResult {
     fields: {
       name: [given, surname].filter(Boolean).join(" "),
       idNumber: `${number.slice(0, 4)}-${number.slice(4, 8)}-${number.slice(8)}`,
+      ...(b[7] === "<" ? {} : { gender: b[7] }),
+      nationality: b.slice(15, 18),
     },
   };
 }

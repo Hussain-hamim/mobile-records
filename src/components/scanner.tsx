@@ -1,25 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  Image,
-  Linking,
-  Modal,
-  Platform,
-  View,
-  ScrollView,
-} from "react-native";
+import { Image, Linking, Modal, Platform, View } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { useApp } from "../state/app-context";
-import { emptyPerson, type Person } from "../domain/models";
+import type { Person } from "../domain/models";
+import type { ScanPhoto } from "../domain/tazkira";
 import { extractImeis } from "../domain/validation";
-import { readAfghanMrz } from "../domain/mrz";
+import { useApp } from "../state/app-context";
 import {
   canRecognize,
-  canReadMrz,
   deleteScans,
   editScan,
   keepScan,
   recognize,
-  recognizeMrz,
 } from "../services/scanning";
 import {
   Button,
@@ -32,42 +23,30 @@ import {
   Txt,
   errorText,
 } from "./ui";
-import { PersonFields } from "./person-fields";
-export function Scanner({
-  mode,
+import { TazkiraScanner } from "./tazkira-scanner";
+function ImeiScanner({
   onClose,
-  onPerson,
   onImei,
 }: {
-  mode: "id" | "imei";
   onClose: () => void;
-  onPerson: (p: Partial<Person>) => void;
   onImei: (imei: string) => void;
 }) {
   const { t } = useApp();
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView | null>(null);
-  const [photo, setPhoto] = useState<{
-    uri: string;
-    width: number;
-    height: number;
-  } | null>(null);
-  const [fields, setFields] = useState<Person>(emptyPerson);
-  const [reviewing, setReviewing] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [photo, setPhoto] = useState<ScanPhoto | null>(null);
   const [imeis, setImeis] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const files = useRef<string[]>([]);
-  const active = useRef(true);
-  const processing = useRef(false);
-  const readerAvailable = mode === "id" ? canReadMrz : canRecognize;
-  const unavailableMessage =
-    mode === "id" ? "mrzNativeRequired" : "nativeRequired";
+  const files = useRef<string[]>([]),
+    active = useRef(true),
+    processing = useRef(false);
   useEffect(() => {
     active.current = true;
     return () => {
       active.current = false;
-      if (!processing.current) void deleteScans(files.current);
+      if (!processing.current) void deleteScans(files.current).catch(() => {});
     };
   }, []);
   async function run(work: () => Promise<void>) {
@@ -82,81 +61,57 @@ export function Scanner({
     } finally {
       processing.current = false;
       if (active.current) setBusy(false);
-      else await deleteScans(files.current);
+      else await deleteScans(files.current).catch(() => {});
     }
   }
   async function close() {
-    // Closing during recognition unmounts the UI; run() removes its files once
-    // native work releases the image. No late result is applied to the draft.
-    if (processing.current) {
-      active.current = false;
-      onClose();
-      return;
-    }
-    try {
-      await deleteScans(files.current);
-      files.current = [];
-      onClose();
-    } catch (e) {
-      setError(errorText(e, t));
-    }
+    active.current = false;
+    if (!processing.current) await deleteScans(files.current).catch(() => {});
+    onClose();
   }
   async function capture() {
     const result = await camera.current?.takePictureAsync({
       quality: 1,
       exif: false,
+      skipProcessing: false,
     });
     if (!result) return;
+    files.current.push(result.uri);
+    if (!active.current) return;
     const uri = await keepScan(result.uri);
     files.current.push(uri);
     if (active.current) setPhoto({ ...result, uri });
   }
   async function edit(action: "rotate" | "crop") {
     if (!photo) return;
-    setReviewing(false);
-    setFields(emptyPerson());
-    setImeis([]);
     const result = await editScan(photo.uri, photo.width, photo.height, action);
     files.current.push(result.uri);
-    if (active.current) setPhoto(result);
+    if (active.current) {
+      setPhoto(result);
+      setImeis([]);
+    }
   }
   async function read() {
     if (!photo) return;
-    setReviewing(false);
-    setFields(emptyPerson());
-    if (mode === "imei") {
-      const result = await recognize(photo.uri, "imei");
-      if (!active.current) return;
-      const values = extractImeis(result.text);
-      setImeis(values);
-      if (!values.length) setError(t("invalidImei"));
-    } else {
-      const result = readAfghanMrz(await recognizeMrz(photo.uri));
-      if (!active.current) return;
-      if (!result.ok) {
-        setError(t(result.error));
-        return;
-      }
-      setFields({ ...emptyPerson(), ...result.fields });
-      setReviewing(true);
-    }
+    const result = await recognize(photo.uri, "imei");
+    if (!active.current) return;
+    const values = extractImeis(result.text);
+    setImeis(values);
+    if (!values.length) setError(t("invalidImei"));
   }
-  async function accept(imei?: string) {
+  async function accept(imei: string) {
     await deleteScans(files.current);
     files.current = [];
-    if (!active.current) return;
-    if (imei) onImei(imei);
-    else
-      onPerson(
-        Object.fromEntries(Object.entries(fields).filter(([, v]) => v.trim())),
-      );
-    onClose();
+    if (active.current) {
+      onImei(imei);
+      onClose();
+    }
   }
   return (
     <Modal animationType="slide" onRequestClose={() => void close()}>
       <Screen>
         <Heading
-          title={t(mode === "id" ? "scanId" : "scanImei")}
+          title={t("scanImei")}
           action={
             <Button
               label={t("close")}
@@ -169,25 +124,22 @@ export function Scanner({
         <Notice message={t("photoPrivacy")} />
         <Notice message={error} tone="error" />
         {Platform.OS !== "android" ? (
-          <Notice message={t(unavailableMessage)} />
+          <Notice message={t("nativeRequired")} />
         ) : !permission?.granted ? (
-          <Card>
-            <Txt>{t("cameraPermission")}</Txt>
-            <Button
-              label={t(
-                permission?.canAskAgain === false
-                  ? "openSettings"
-                  : "allowCamera",
-              )}
-              onPress={() =>
-                void (permission?.canAskAgain === false
-                  ? Linking.openSettings()
-                  : requestPermission())
-              }
-            />
-          </Card>
+          <Button
+            label={t(
+              permission?.canAskAgain === false
+                ? "openSettings"
+                : "allowCamera",
+            )}
+            onPress={() =>
+              void (permission?.canAskAgain === false
+                ? Linking.openSettings()
+                : requestPermission())
+            }
+          />
         ) : !photo ? (
-          <View>
+          <>
             <View
               style={{
                 height: 360,
@@ -200,6 +152,8 @@ export function Scanner({
                 ref={camera}
                 style={{ flex: 1 }}
                 facing="back"
+                onCameraReady={() => setReady(true)}
+                onMountError={() => setError(t("cameraUnavailable"))}
                 barcodeScannerSettings={{
                   barcodeTypes: [
                     "code128",
@@ -209,23 +163,17 @@ export function Scanner({
                     "datamatrix",
                   ],
                 }}
-                onBarcodeScanned={
-                  mode === "imei"
-                    ? ({ data }) => {
-                        const values = extractImeis(data);
-                        if (values.length) {
-                          setImeis(values);
-                        }
-                      }
-                    : undefined
-                }
+                onBarcodeScanned={({ data }) => {
+                  const values = extractImeis(data);
+                  if (values.length) setImeis(values);
+                }}
               />
               <View
                 pointerEvents="none"
                 style={{
                   position: "absolute",
                   left: "8%",
-                  right: "8%",
+                  width: "84%",
                   top: "25%",
                   height: "50%",
                   borderWidth: 2,
@@ -233,34 +181,17 @@ export function Scanner({
                   borderRadius: 14,
                 }}
               />
-              {mode === "id" ? (
-                <View
-                  pointerEvents="none"
-                  style={{
-                    position: "absolute",
-                    left: "10%",
-                    right: "10%",
-                    top: "58%",
-                    height: "14%",
-                    borderWidth: 2,
-                    borderStyle: "dashed",
-                    borderColor: "#DDF4AA",
-                    borderRadius: 4,
-                  }}
-                />
-              ) : null}
             </View>
             <Txt muted size={12}>
-              {t(mode === "id" ? "idHint" : "scanHint")}
+              {t("scanHint")}
             </Txt>
-            <View style={{ height: 12 }} />
             <Button
               label={t("capture")}
-              icon="camera-outline"
               loading={busy}
+              disabled={!ready}
               onPress={() => void run(capture)}
             />
-          </View>
+          </>
         ) : (
           <>
             <Image
@@ -273,7 +204,7 @@ export function Scanner({
               }}
               resizeMode="contain"
             />
-            <Row style={{ marginBottom: 14 }}>
+            <Row>
               <Button
                 small
                 secondary
@@ -298,21 +229,19 @@ export function Scanner({
                     await deleteScans(files.current);
                     files.current = [];
                     setPhoto(null);
-                    setReviewing(false);
+                    setReady(false);
                     setImeis([]);
                   })
                 }
               />
             </Row>
             <Button
-              label={t(mode === "id" ? "readMrz" : "recognize")}
+              label={t("recognize")}
               loading={busy}
-              disabled={!readerAvailable}
+              disabled={!canRecognize}
               onPress={() => void run(read)}
             />
-            {!readerAvailable ? (
-              <Notice message={t(unavailableMessage)} />
-            ) : null}
+            {!canRecognize ? <Notice message={t("nativeRequired")} /> : null}
           </>
         )}
         {imeis.length ? (
@@ -322,33 +251,27 @@ export function Scanner({
               <View key={imei} style={{ marginTop: 12 }}>
                 <Chip
                   label={imei}
-                  onPress={() => void run(() => accept(imei))}
+                  onPress={
+                    busy ? undefined : () => void run(() => accept(imei))
+                  }
                 />
               </View>
             ))}
           </Card>
         ) : null}
-        {reviewing ? (
-          <ScrollView keyboardShouldPersistTaps="handled">
-            <View style={{ height: 20 }} />
-            <Txt bold>{t("review")}</Txt>
-            <Notice message={t("mrzReview")} />
-            <PersonFields compact={false} value={fields} onChange={setFields} />
-            <Button
-              label={t("apply")}
-              loading={busy}
-              onPress={() => void run(() => accept())}
-            />
-          </ScrollView>
-        ) : null}
-        {mode === "id" ? (
-          <Button
-            label={t("mrzManual")}
-            secondary
-            onPress={() => void close()}
-          />
-        ) : null}
       </Screen>
     </Modal>
+  );
+}
+export function Scanner(props: {
+  mode: "id" | "imei";
+  onClose: () => void;
+  onPerson: (p: Partial<Person>) => void;
+  onImei: (imei: string) => void;
+}) {
+  return props.mode === "id" ? (
+    <TazkiraScanner onClose={props.onClose} onPerson={props.onPerson} />
+  ) : (
+    <ImeiScanner onClose={props.onClose} onImei={props.onImei} />
   );
 }

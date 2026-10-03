@@ -65,7 +65,9 @@
       ],
       "expo-sharing",
       "expo-asset",
-      "./plugins/with-record-privacy"
+      "./plugins/with-record-privacy",
+      "./plugins/with-android-toolchain",
+      "./plugins/with-fingerprint-usb"
     ],
     "experiments": {
       "typedRoutes": true,

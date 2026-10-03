@@ -19,9 +19,12 @@ def save(repo, rev, source, destination):
     print(destination, len(data), flush=True)
     return data
 ocr = revision('tesseract-ocr/tessdata_fast')
-for lang in ['eng']:
+for lang in ['eng', 'fas', 'pus']:
     save('tesseract-ocr/tessdata_fast', ocr, lang + '.traineddata', 'modules/record-ocr/android/src/main/assets/tessdata/' + lang + '.traineddata')
 save('tesseract-ocr/tessdata_fast', ocr, 'LICENSE', 'assets/licenses/tessdata-LICENSE')
+mrz = '1e7adfecda5f3c9ae1fb12cf6b4b8c3958c63e46'
+save('DoubangoTelecom/tesseractMRZ', mrz, 'tessdata_fast/mrz.traineddata', 'modules/record-ocr/android/src/main/assets/tessdata/mrz.traineddata')
+save('DoubangoTelecom/tesseractMRZ', mrz, 'LICENSE', 'assets/licenses/MRZ-LICENSE')
 fonts = revision('google/fonts')
 save('google/fonts', fonts, 'ofl/notosansarabic/NotoSansArabic[wdth,wght].ttf', 'assets/fonts/NotoSansArabic.ttf')
 save('google/fonts', fonts, 'ofl/notosansarabic/OFL.txt', 'assets/licenses/NotoSansArabic-OFL.txt')

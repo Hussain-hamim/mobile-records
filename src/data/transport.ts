@@ -5,9 +5,9 @@ import type {
   ShopProfile,
   Transaction,
   Amendment,
-  Customer,
 } from "../domain/models";
 import type { SyncTransport } from "./repository";
+import { customerFromRow } from "../domain/fingerprints";
 export function transportFor(membership: Membership): SyncTransport {
   if (!backend) throw new Error("setup");
   const api = backend;
@@ -41,7 +41,7 @@ export function transportFor(membership: Membership): SyncTransport {
         .eq("user_id", membership.userId)
         .single();
       if (status.error) throw new Error(status.error.message);
-      if (status.data.must_change_password) throw new Error("changePassword");
+      if (status.data.must_change_password) throw new Error("loginCodeRequired");
     },
     async push(op: Operation) {
       const { data, error } = await api.rpc("apply_operation", {
@@ -57,7 +57,10 @@ export function transportFor(membership: Membership): SyncTransport {
     async pull() {
       const [records, customers, amendments, shop] = await Promise.all([
         rows("records", "id,snapshot"),
-        rows("customers", "id,person,version"),
+        rows(
+          "customers",
+          "id,person,fingerprint_template,fingerprints,fingerprint_audit,version",
+        ),
         rows("amendments", "id,payload"),
         api
           .from("shops")
@@ -68,7 +71,7 @@ export function transportFor(membership: Membership): SyncTransport {
       if (shop.error) throw new Error(shop.error.message);
       return {
         records: records.map((r) => r.snapshot as Transaction),
-        customers: customers as unknown as Customer[],
+        customers: customers.map(customerFromRow),
         amendments: amendments.map((a) => a.payload as Amendment),
         profile: shop.data.profile as ShopProfile,
         version: shop.data.version as number,

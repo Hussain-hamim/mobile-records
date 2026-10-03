@@ -41,3 +41,9 @@ example
 # generated native folders
 /ios
 /android
+/modules/*/android/build/
+/modules/*/android/.cxx/
+/modules/*/android/.gradle/
+
+# ZKTeco SDK checkout metadata. Runtime binaries are vendored by scripts/prepare-fingerprint.py.
+SDKzk9500/**/.svn/

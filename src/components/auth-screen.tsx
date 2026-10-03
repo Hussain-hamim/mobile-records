@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { Linking, Platform, View } from "react-native";
-import { useApp } from "../state/app-context";
+import { useRef, useState } from "react";
+import { Platform, View } from "react-native";
 import { backend } from "../data/backend";
+import { useApp } from "../state/app-context";
 import {
   Button,
   Card,
@@ -20,10 +20,13 @@ export function AuthScreen() {
   const app = useApp();
   const { t, phase } = app;
   const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const submitting = useRef(false);
   async function run(action: () => Promise<void>) {
+    if (submitting.current) return;
+    submitting.current = true;
     setBusy(true);
     setError("");
     try {
@@ -31,6 +34,7 @@ export function AuthScreen() {
     } catch (e) {
       setError(errorText(e, t));
     } finally {
+      submitting.current = false;
       setBusy(false);
     }
   }
@@ -69,16 +73,6 @@ export function AuthScreen() {
       </View>
       {phase === "loading" ? (
         <Txt>{t("loading")}</Txt>
-      ) : phase === "locked" ? (
-        <Card>
-          <Heading title={t("unlock")} subtitle={t("unlockHint")} />
-          <Button
-            label={t("unlock")}
-            icon="lock-open-outline"
-            onPress={() => void run(app.unlock)}
-            loading={busy}
-          />
-        </Card>
       ) : phase === "revoked" ? (
         <>
           <Notice message={t("noAccess")} tone="error" />
@@ -90,45 +84,41 @@ export function AuthScreen() {
         </>
       ) : (
         <Card>
-          <Heading
-            title={t(phase === "password" ? "changePassword" : "signIn")}
-            subtitle={t("invitationOnly")}
-          />
-          {phase !== "password" ? (
-            <Field
-              label={t("phone")}
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="+93 700 123 456"
-              keyboardType="phone-pad"
-              numeric
-            />
-          ) : null}
+          <Heading title={t("signIn")} subtitle={t("invitationOnly")} />
           <Field
-            label={t(phase === "password" ? "newPassword" : "password")}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            autoComplete={
-              phase === "password" ? "new-password" : "current-password"
-            }
+            label={t("phone")}
+            value={phone}
+            onChangeText={setPhone}
+            placeholder="+93 700 123 456"
+            keyboardType="phone-pad"
+            numeric
           />
+          <Field
+            label={t("loginCode")}
+            value={code}
+            onChangeText={setCode}
+            keyboardType="number-pad"
+            numeric
+            autoComplete="one-time-code"
+            maxLength={11}
+            placeholder="1234 5678"
+          />
+          <Txt muted size={12}>
+            {t("loginCodeHint")}
+          </Txt>
           <Notice message={error} tone="error" />
-          {!backend || Platform.OS === "web" ? (
+          {!backend ? (
             <Notice message={t("setup")} />
+          ) : Platform.OS === "web" ? (
+            <Notice message={t("androidSignIn")} />
           ) : null}
           <Button
-            label={t(phase === "password" ? "changePassword" : "signIn")}
+            label={t("signIn")}
             icon="arrow-right"
             loading={busy}
             disabled={!backend || Platform.OS !== "android"}
             onPress={() =>
-              void run(() =>
-                phase === "password"
-                  ? app.changePassword(password)
-                  : app.signIn(phone, password),
-              )
+              void run(() => app.signIn(phone, code).finally(() => setCode("")))
             }
           />
           <View style={{ height: 18 }} />
@@ -145,16 +135,6 @@ export function AuthScreen() {
           loading={busy}
           onPress={() => void run(app.enterDemo)}
         />
-      ) : null}
-      {phase === "locked" ? (
-        <>
-          <Notice message={error} tone="error" />
-          <Button
-            label={t("openSettings")}
-            secondary
-            onPress={() => void Linking.openSettings()}
-          />
-        </>
       ) : null}
       <View style={{ marginTop: 30 }}>
         <Row>

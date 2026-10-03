@@ -6,9 +6,16 @@ import type {
   Operation,
   ShopProfile,
   Transaction,
+  FingerprintEntry,
 } from "../domain/models";
 import type { Vault } from "./vault";
 import { digits, normalizeImei, validateDraft } from "../domain/validation";
+import {
+  draftFingerprints,
+  fingerprintsOf,
+  fingerprintChanges,
+  validFingerprintSkip,
+} from "../domain/fingerprints";
 type Change = { key: string; value: unknown | null };
 export class Repository {
   private writes: Promise<unknown> = Promise.resolve();
@@ -51,7 +58,17 @@ export class Repository {
     const op: Operation = {
       id: existing?.id ?? this.uuid(),
       kind,
-      payload,
+      payload:
+        kind === "customer" &&
+        payload.fingerprintReason === undefined &&
+        existing
+          ? {
+              ...payload,
+              fingerprintReason:
+                (existing.payload as Record<string, unknown>)
+                  .fingerprintReason ?? "",
+            }
+          : payload,
       baseVersion: existing?.baseVersion ?? version,
       state: "pending",
     };
@@ -68,6 +85,45 @@ export class Repository {
     );
     await this.vault.batch([{ key: "profile", value: profile }, op]);
     this.membership.profile = profile;
+  }
+  saveFingerprints(
+    customerId: string,
+    entries: FingerprintEntry[],
+    reason: string,
+    expectedVersion: number,
+  ) {
+    return this.atomic(async () => {
+      const current = await this.vault.get<Customer>("customer:" + customerId);
+      if (!current || current.version !== expectedVersion)
+        throw new Error("conflict");
+      const audit = fingerprintChanges(
+        fingerprintsOf(current),
+        entries,
+        this.membership,
+        reason,
+        new Date().toISOString(),
+      );
+      const customer: Customer = {
+        ...current,
+        fingerprintTemplate: undefined,
+        fingerprints: entries,
+        fingerprintAudit: [...(current.fingerprintAudit ?? []), ...audit],
+      };
+      await this.vault.batch([
+        { key: "customer:" + customerId, value: customer },
+        await this.mutableOperation(
+          "customer",
+          {
+            id: customerId,
+            person: customer.person,
+            fingerprints: entries,
+            fingerprintReason: reason,
+          },
+          customer.version,
+        ),
+      ]);
+      return customer;
+    });
   }
   finalize(draft: Draft) {
     return this.atomic(() => this.writeFinalized(draft));
@@ -87,9 +143,29 @@ export class Repository {
     const id = draft.id;
     const customerId = draft.customerId || this.uuid();
     const previous = await this.vault.get<Customer>("customer:" + customerId);
+    const now = new Date().toISOString();
+    const before = fingerprintsOf(previous);
+    const fingerprints = draftFingerprints(draft, previous).map((f) =>
+      before.some((old) => old.id === f.id)
+        ? f
+        : {
+            ...f,
+            enrolledBy: this.membership.userId,
+            enrolledAt: f.enrolledAt ?? now,
+          },
+    );
+    const audit = fingerprintChanges(
+      before,
+      fingerprints,
+      this.membership,
+      "",
+      now,
+    );
     const customer: Customer = {
       id: customerId,
       person: { ...draft.customer },
+      fingerprints,
+      fingerprintAudit: [...(previous?.fingerprintAudit ?? []), ...audit],
       version: previous?.version ?? 0,
     };
     const record: Transaction = {
@@ -108,7 +184,16 @@ export class Repository {
       shop: { ...this.membership.profile },
       price: digits(draft.price),
       currency: "AFN",
-      occurredAt: new Date().toISOString(),
+      occurredAt: now,
+      ...(!fingerprints.length && validFingerprintSkip(draft.fingerprintSkip)
+        ? {
+            fingerprintSkip: {
+              ...draft.fingerprintSkip!,
+              at: now,
+              by: this.membership.userId,
+            },
+          }
+        : {}),
       templateVersion: "draft-v1",
       syncState: "pending",
     };
@@ -124,13 +209,19 @@ export class Repository {
       { key: "customer:" + customerId, value: customer },
       await this.mutableOperation(
         "customer",
-        { id: customerId, person: customer.person },
+        {
+          id: customerId,
+          person: customer.person,
+          fingerprints,
+        },
         customer.version,
       ),
       { key: "op:" + operation.id, value: operation },
       { key: "draft:" + draft.id, value: null },
     ]);
-    return record;
+    return this.vault.storage === "cloud"
+      ? { ...record, syncState: "synced" as const }
+      : record;
   }
   amend(record: Transaction, reason: string) {
     return this.atomic(() => this.writeAmendment(record, reason));

@@ -1,28 +1,29 @@
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import {
-  Children,
-  useState,
-  useRef,
-  useEffect,
-  type ComponentProps,
-  type ReactNode,
+    Children,
+    useEffect,
+    useRef,
+    useState,
+    type ComponentProps,
+    type ReactNode,
 } from "react";
 import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  type TextInputProps,
-  type ViewStyle,
-  type ColorValue,
+    ActivityIndicator,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
+    type ColorValue,
+    type TextInputProps,
+    type ViewStyle,
 } from "react-native";
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useApp } from "../state/app-context";
-import type { TextKey } from "../i18n/strings";
+import type { Language } from "../domain/models";
 import { digits } from "../domain/validation";
+import type { TextKey } from "../i18n/strings";
+import { useApp } from "../state/app-context";
 export const colors = {
   bg: "#F5F6FC",
   paper: "#FFFFFF",
@@ -40,6 +41,9 @@ export const colors = {
   lime: "#DDF4AA",
 };
 export type IconName = ComponentProps<typeof MaterialCommunityIcons>["name"];
+export function scriptFont(language: Language) {
+  return language === "ps" ? "BahijBaraem" : language === "fa" ? "Noto" : undefined;
+}
 export function Icon({
   name,
   size = 22,
@@ -66,21 +70,23 @@ export function Txt({
   color?: string;
   style?: ComponentProps<typeof Text>["style"];
 }) {
-  const { rtl } = useApp();
+  const { rtl, language } = useApp();
+  const family = scriptFont(language);
+  const pashto = family === "BahijBaraem";
   return (
     <Text
       style={[
         {
-          fontFamily: rtl ? "Noto" : undefined,
           fontSize: size,
           lineHeight: size * (rtl ? 1.8 : 1.35),
           color: color ?? (muted ? colors.muted : colors.ink),
-          fontWeight: bold ? "700" : "400",
+          fontWeight: pashto ? undefined : bold ? "700" : "400",
           letterSpacing: bold && !rtl ? -0.4 : 0,
           textAlign: rtl ? "right" : "left",
           writingDirection: rtl ? "rtl" : "ltr",
         },
         style,
+        pashto ? { fontFamily: family, fontWeight: "normal" } : { fontFamily: family },
       ]}
     >
       {Children.map(children, (child) =>
@@ -239,7 +245,7 @@ export function Field({
   multiline = false,
   ...rest
 }: TextInputProps & { label: string; numeric?: boolean }) {
-  const { rtl } = useApp();
+  const { rtl, language } = useApp();
   const [focused, setFocused] = useState(false);
   return (
     <View style={{ gap: 8, marginBottom: 18 }}>
@@ -261,7 +267,8 @@ export function Field({
         style={[
           styles.input,
           {
-            fontFamily: rtl && !numeric ? "Noto" : undefined,
+            fontFamily: numeric ? undefined : scriptFont(language),
+            fontWeight: language === "ps" && !numeric ? "normal" : undefined,
             borderColor: focused ? colors.green : colors.line,
             backgroundColor: focused ? colors.paper : "#F8F9FD",
             textAlign: numeric ? "left" : rtl ? "right" : "left",
@@ -479,7 +486,7 @@ export function SearchField({
   onChangeText: (value: string) => void;
   placeholder: string;
 }) {
-  const { rtl, t } = useApp();
+  const { rtl, t, language } = useApp();
   const [focused, setFocused] = useState(false);
   return (
     <Row
@@ -508,7 +515,8 @@ export function SearchField({
           minWidth: 0,
           minHeight: 54,
           fontSize: 13,
-          fontFamily: rtl ? "Noto" : undefined,
+          fontFamily: scriptFont(language),
+          fontWeight: language === "ps" ? "normal" : undefined,
           color: colors.ink,
           textAlign: rtl ? "right" : "left",
         }}
