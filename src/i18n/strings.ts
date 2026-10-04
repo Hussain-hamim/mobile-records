@@ -550,11 +550,6 @@ const copy = {
   step: ["Step", "پړاو", "مرحله"],
   of: ["of", "له", "از"],
 
-  deviceLockRequired: [
-    "Set a device PIN, password or biometric to protect your account.",
-    "د خپل حساب ساتنې لپاره د موبایل پټنوم یا د ګوتې قفل وټاکئ.",
-    "برای محافظت از حساب، رمز یا قفل اثر انگشت گوشی را فعال کنید.",
-  ],
   owner: ["Owner", "مالک", "مالک"],
   employee: ["Staff", "کارکوونکی", "کارمند"],
   app: ["Radefy Mobile Registrations App", "د موبایل ثبت", "ثبت موبایل"],

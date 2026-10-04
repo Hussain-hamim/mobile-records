@@ -1,5 +1,4 @@
 import * as Crypto from "expo-crypto";
-import * as LocalAuthentication from "expo-local-authentication";
 import * as Network from "expo-network";
 import {
     createContext,
@@ -267,11 +266,6 @@ function useController() {
   }, [phase, demo, sync]);
   async function signIn(phone: string, code: string) {
     if (!backend) throw new Error("setup");
-    if (
-      (await LocalAuthentication.getEnrolledLevelAsync()) ===
-      LocalAuthentication.SecurityLevel.NONE
-    )
-      throw new Error("deviceLockRequired");
     const normalized = normalizePhone(phone);
     const { data: existing } = await backend.auth.getSession();
     if (existing.session) {
