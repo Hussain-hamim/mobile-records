@@ -131,6 +131,7 @@ export function customerFromRow(row: Record<string, unknown>): Customer {
       : typeof row.fingerprint_template === "string"
         ? { fingerprintTemplate: row.fingerprint_template }
         : {}),
+    profileAudit: Array.isArray(row.profile_audit) ? row.profile_audit as Customer["profileAudit"] : [],
     fingerprintAudit: Array.isArray(row.fingerprint_audit)
       ? (row.fingerprint_audit as FingerprintAudit[])
       : [],

@@ -1,88 +1,105 @@
-import { Pressable, View } from "react-native";
 import { router } from "expo-router";
-import { useApp } from "../state/app-context";
+import { Pressable, StyleSheet, View } from "react-native";
+import { formatDate, formatMoney, phoneLabel } from "../domain/format";
 import type { Transaction } from "../domain/models";
-import { formatDate, formatMoney } from "../domain/format";
+import { useApp } from "../state/app-context";
 import { Icon, Row, Txt, colors } from "./ui";
+
 export function RecordRow({ record }: { record: Transaction }) {
-  const { language, gregorian, t, rtl } = useApp();
+  const { language, gregorian, t, rtl, amendments } = useApp();
   const buy = record.direction === "buy";
+  const accent = buy ? colors.green : colors.amber;
+  const soft = buy ? colors.mint : colors.pale;
+  const label = phoneLabel(record.phone.brand, record.phone.model);
+
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${record.phone.model}, ${record.customer.name}`}
+      accessibilityLabel={`${label}, ${record.customer.name}`}
       onPress={() =>
         router.push({ pathname: "/record/[id]", params: { id: record.id } })
       }
-      style={({ pressed }) => ({
-        padding: 15,
-        marginBottom: 10,
-        borderRadius: 20,
-        backgroundColor: pressed ? colors.mint : colors.paper,
-        borderWidth: 1,
-        borderColor: colors.line,
-      })}
+      style={({ pressed }) => [
+        styles.card,
+        { backgroundColor: pressed ? soft : colors.paper },
+      ]}
     >
-      <Row style={{ gap: 12 }}>
-        <View
-          style={{
-            width: 45,
-            height: 52,
-            borderRadius: 15,
-            backgroundColor: buy ? colors.mint : colors.pale,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Icon
-            name={buy ? "cellphone-arrow-down" : "cellphone-check"}
-            size={25}
-            color={buy ? colors.green : colors.amber}
-          />
-        </View>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Txt bold size={14}>
-            {record.phone.brand} {record.phone.model}
-          </Txt>
-          <Txt muted size={12} style={{ marginTop: 3 }}>
-            {record.customer.name}
-          </Txt>
-        </View>
-        <Icon
-          name={rtl ? "chevron-left" : "chevron-right"}
-          size={18}
-          color="#A1A5B8"
-        />
-      </Row>
-      <Row
-        style={{
-          justifyContent: "space-between",
-          marginTop: 14,
-          paddingTop: 12,
-          borderTopWidth: 1,
-          borderColor: colors.line,
-          gap: 5,
-        }}
-      >
-        <View
-          style={{
-            backgroundColor: buy ? colors.mint : colors.pale,
-            borderRadius: 7,
-            paddingHorizontal: 8,
-            paddingVertical: 3,
-          }}
-        >
-          <Txt size={10} bold color={buy ? colors.green : colors.amber}>
-            {t(buy ? "bought" : "sold")}
-          </Txt>
-        </View>
-        <Txt size={10} muted>
-          {formatDate(record.occurredAt, language, gregorian)}
-        </Txt>
-        <Txt bold size={13}>
-          {formatMoney(record.price, language)}
-        </Txt>
-      </Row>
+      <View style={[styles.stripe, { backgroundColor: accent }]} />
+      <View style={styles.body}>
+        <Row style={{ gap: 12, alignItems: "flex-start" }}>
+          <View style={[styles.icon, { backgroundColor: soft }]}>
+            <Icon
+              name={buy ? "cellphone-arrow-down" : "cellphone-check"}
+              size={22}
+              color={accent}
+            />
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Txt bold size={15} style={{ marginBottom: 3 }}>
+              {label}
+            </Txt>
+            <Txt muted size={12}>
+              {record.customer.name}
+            </Txt>
+            <Row style={{ gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+              <View style={[styles.badge, { backgroundColor: soft }]}>
+                <Txt size={10} bold color={accent}>
+                  {t(amendments.some(a => a.recordId === record.id && a.kind === "void") ? "recordVoided" : buy ? "bought" : "sold")}
+                </Txt>
+              </View>
+              <Txt size={11} muted>
+                {formatDate(record.occurredAt, language, gregorian)}
+              </Txt>
+            </Row>
+          </View>
+          <View style={styles.aside}>
+            <Txt bold size={13}>
+              {formatMoney(record.price, language)}
+            </Txt>
+            <Icon
+              name={rtl ? "chevron-left" : "chevron-right"}
+              size={18}
+              color="#A1A5B8"
+            />
+          </View>
+        </Row>
+      </View>
     </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  card: {
+    flexDirection: "row",
+    marginBottom: 10,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.line,
+    overflow: "hidden",
+  },
+  stripe: {
+    width: 4,
+  },
+  body: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+  },
+  icon: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badge: {
+    borderRadius: 7,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  aside: {
+    alignItems: "flex-end",
+    gap: 10,
+    paddingTop: 2,
+  },
+});

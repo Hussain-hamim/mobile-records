@@ -1,3 +1,4 @@
+import type { ReceiptContext } from "../domain/receipt-attachments";
 import { toBlob } from "html-to-image";
 import type { Language, Transaction } from "../domain/models";
 import type { FormPicture } from "./form-image-types";
@@ -9,8 +10,15 @@ export async function saveFormImage(
   gregorian: boolean,
   correction?: string,
   onPreview?: (picture: FormPicture) => void,
+  context?: ReceiptContext,
 ): Promise<"imageReady" | "imageSaved" | null> {
-  const html = await recordHtml(record, language, gregorian, correction);
+  const html = await recordHtml(
+    record,
+    language,
+    gregorian,
+    correction,
+    context,
+  );
   const source = new DOMParser().parseFromString(html, "text/html");
   const frame = document.createElement("iframe");
   frame.title = "Form image export";
@@ -28,6 +36,7 @@ export async function saveFormImage(
       "width:794px;min-height:1123px;padding:45px;background:#fff";
     await doc.fonts.load("12px Record");
     await doc.fonts.ready;
+    await Promise.all(Array.from(doc.images, (image) => image.decode()));
     const height = Math.max(1123, doc.body.scrollHeight);
     // Avoid an oversized canvas silently clipping a very long form.
     if (height > 16000) throw new Error("imageTooLarge");

@@ -59,7 +59,7 @@ export function transportFor(membership: Membership): SyncTransport {
         rows("records", "id,snapshot"),
         rows(
           "customers",
-          "id,person,fingerprint_template,fingerprints,fingerprint_audit,version",
+          "id,person,fingerprint_template,fingerprints,fingerprint_audit,profile_audit,version",
         ),
         rows("amendments", "id,payload"),
         api

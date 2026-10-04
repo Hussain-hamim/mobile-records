@@ -1,17 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { Image, Linking, Modal, Platform, View } from "react-native";
+import { AppState, Image, Linking, Modal, Platform, View } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import type { Person } from "../domain/models";
 import type { ScanPhoto } from "../domain/tazkira";
-import { extractImeis } from "../domain/validation";
-import { useApp } from "../state/app-context";
+import { imeiGuide } from "../domain/imei-frame";
 import {
-  canRecognize,
-  deleteScans,
-  editScan,
-  keepScan,
-  recognize,
-} from "../services/scanning";
+  captureImeiRegion,
+  readImeiBarcodes,
+  readImeiCrop,
+} from "../services/imei-scanning";
+import { useApp } from "../state/app-context";
+import { canRecognize, deleteScans, editScan } from "../services/scanning";
 import {
   Button,
   Card,
@@ -34,7 +33,12 @@ function ImeiScanner({
   const { t } = useApp();
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView | null>(null);
+  const preview = useRef({ width: 0, height: 0 });
   const [ready, setReady] = useState(false);
+  const [foreground, setForeground] = useState(
+    AppState.currentState === "active",
+  );
+  const manualRequested = useRef(false);
   const [photo, setPhoto] = useState<ScanPhoto | null>(null);
   const [imeis, setImeis] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -69,19 +73,90 @@ function ImeiScanner({
     if (!processing.current) await deleteScans(files.current).catch(() => {});
     onClose();
   }
-  async function capture() {
-    const result = await camera.current?.takePictureAsync({
-      quality: 1,
-      exif: false,
-      skipProcessing: false,
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      setForeground(state === "active");
+      if (state !== "active") {
+        setReady(false);
+        manualRequested.current = false;
+        setBusy(false);
+      }
     });
-    if (!result) return;
-    files.current.push(result.uri);
-    if (!active.current) return;
-    const uri = await keepScan(result.uri);
-    files.current.push(uri);
-    if (active.current) setPhoto({ ...result, uri });
-  }
+    return () => subscription.remove();
+  }, []);
+  useEffect(() => {
+    if (
+      Platform.OS !== "android" ||
+      !permission?.granted ||
+      !ready ||
+      !foreground ||
+      photo
+    )
+      return;
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const live = () => !stopped && active.current;
+    async function tick() {
+      if (!live()) return;
+      if (processing.current) {
+        timer = setTimeout(() => void tick(), 150);
+        return;
+      }
+      processing.current = true;
+      let cropped: ScanPhoto | undefined;
+      let retained = false;
+      try {
+        const geometry = { ...preview.current };
+        cropped = await captureImeiRegion(async () => {
+          const result = await camera.current?.takePictureAsync({
+            quality: 0.9,
+            exif: false,
+            skipProcessing: false,
+            shutterSound: false,
+          });
+          if (!result) throw new Error("cameraUnavailable");
+          return result;
+        }, geometry);
+        if (!live()) return;
+        const manual = manualRequested.current;
+        manualRequested.current = false;
+        const values = manual
+          ? await readImeiCrop(cropped.uri, live)
+          : await readImeiBarcodes(cropped.uri);
+        if (!live()) return;
+        if (manual || values.length) {
+          manualRequested.current = false;
+          files.current.push(cropped.uri);
+          retained = true;
+          setPhoto(cropped);
+          setImeis(values);
+          setError(values.length ? "" : t("invalidImei"));
+        } else setError("");
+      } catch (e) {
+        if (live()) setError(errorText(e, t));
+      } finally {
+        if (cropped && !retained)
+          await deleteScans([cropped.uri]).catch(() => {});
+        processing.current = false;
+        if (!active.current) await deleteScans(files.current).catch(() => {});
+        if (live()) {
+          if (!manualRequested.current) setBusy(false);
+          if (!retained)
+            timer = setTimeout(
+              () => void tick(),
+              manualRequested.current ? 0 : 450,
+            );
+        }
+      }
+    }
+    // Give autofocus a moment to settle before the first crop. Only one capture
+    // and decoder run at a time; no full-frame barcode analyzer runs in parallel.
+    timer = setTimeout(() => void tick(), 600);
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+    };
+  }, [foreground, permission?.granted, photo, ready, t]);
   async function edit(action: "rotate" | "crop") {
     if (!photo) return;
     const result = await editScan(photo.uri, photo.width, photo.height, action);
@@ -93,9 +168,8 @@ function ImeiScanner({
   }
   async function read() {
     if (!photo) return;
-    const result = await recognize(photo.uri, "imei");
+    const values = await readImeiCrop(photo.uri, () => active.current);
     if (!active.current) return;
-    const values = extractImeis(result.text);
     setImeis(values);
     if (!values.length) setError(t("invalidImei"));
   }
@@ -141,6 +215,10 @@ function ImeiScanner({
         ) : !photo ? (
           <>
             <View
+              onLayout={({ nativeEvent }) => {
+                preview.current = nativeEvent.layout;
+                setImeis([]);
+              }}
               style={{
                 height: 360,
                 borderRadius: 20,
@@ -148,34 +226,27 @@ function ImeiScanner({
                 marginBottom: 16,
               }}
             >
-              <CameraView
-                ref={camera}
-                style={{ flex: 1 }}
-                facing="back"
-                onCameraReady={() => setReady(true)}
-                onMountError={() => setError(t("cameraUnavailable"))}
-                barcodeScannerSettings={{
-                  barcodeTypes: [
-                    "code128",
-                    "code39",
-                    "ean13",
-                    "qr",
-                    "datamatrix",
-                  ],
-                }}
-                onBarcodeScanned={({ data }) => {
-                  const values = extractImeis(data);
-                  if (values.length) setImeis(values);
-                }}
-              />
+              {foreground ? (
+                <CameraView
+                  ref={camera}
+                  style={{ flex: 1 }}
+                  facing="back"
+                  animateShutter={false}
+                  onCameraReady={() => setReady(true)}
+                  onMountError={() => {
+                    setReady(false);
+                    setError(t("cameraUnavailable"));
+                  }}
+                />
+              ) : null}
               <View
                 pointerEvents="none"
                 style={{
                   position: "absolute",
-                  left: "8%",
-                  width: "84%",
-                  top: "25%",
-                  height: "50%",
+                  left: `${imeiGuide.x * 100}%`,
+                  width: `${imeiGuide.width * 100}%`,
+                  top: `${imeiGuide.y * 100}%`,
+                  height: `${imeiGuide.height * 100}%`,
                   borderWidth: 2,
                   borderColor: "#fff",
                   borderRadius: 14,
@@ -183,13 +254,17 @@ function ImeiScanner({
               />
             </View>
             <Txt muted size={12}>
-              {t("scanHint")}
+              {t("imeiAreaHint")}
             </Txt>
             <Button
-              label={t("capture")}
+              label={t("readImeiArea")}
               loading={busy}
-              disabled={!ready}
-              onPress={() => void run(capture)}
+              disabled={!ready || busy || !foreground}
+              onPress={() => {
+                manualRequested.current = true;
+                setBusy(true);
+                setError("");
+              }}
             />
           </>
         ) : (

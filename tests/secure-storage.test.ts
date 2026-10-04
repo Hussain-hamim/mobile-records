@@ -33,3 +33,24 @@ test("failed token writes leave the previous committed session readable; Unicode
   await storage.removeItem("session");
   assert.equal(await storage.getItem("session"), null);
 });
+
+test("cleanup failure after commit cannot cause a caller to roll back the published photo", async () => {
+  const items = new Map<string, string>();
+  const storage = createChunkStorage(
+    {
+      async getItemAsync(key) {
+        return items.get(key) ?? null;
+      },
+      async setItemAsync(key, value) {
+        items.set(key, value);
+      },
+      async deleteItemAsync() {
+        throw new Error("cleanup unavailable");
+      },
+    },
+    randomUUID,
+  );
+  await storage.setItem("photos", "previous");
+  await storage.setItem("photos", "replacement");
+  assert.equal(await storage.getItem("photos"), "replacement");
+});

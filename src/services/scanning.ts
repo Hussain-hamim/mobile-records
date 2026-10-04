@@ -54,6 +54,7 @@ export async function cleanupScans() {
     "record-scans",
     "Camera",
     "ImageManipulator",
+    "ImagePicker",
     "form-exports",
   ]) {
     const folder = new Directory(Paths.cache, name);
@@ -95,10 +96,18 @@ export async function cropScan(
   width: number,
   height: number,
   region: MrzRegion,
+  maxDimension?: number,
 ) {
   const crop = mrzPixelCrop({ width, height }, region);
   return transformScan(uri, (context) => {
     context.crop(crop);
+    if (maxDimension && Math.max(crop.width, crop.height) > maxDimension) {
+      context.resize(
+        crop.width >= crop.height
+          ? { width: maxDimension }
+          : { height: maxDimension },
+      );
+    }
   });
 }
 

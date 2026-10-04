@@ -1,7 +1,9 @@
 export type Language = "ps" | "fa" | "en";
 export type Direction = "buy" | "sell";
 export type SyncState = "pending" | "synced" | "failed" | "conflict";
+export type TazkiraType = "enid" | "pnid";
 export interface Person {
+  idType?: TazkiraType; // Absent on older saved records; never rewrite historical snapshots.
   name: string;
   fatherName: string;
   grandfatherName: string;
@@ -77,7 +79,14 @@ export interface Customer {
   fingerprintTemplate?: string; // Legacy read compatibility only.
   fingerprints?: FingerprintEntry[];
   fingerprintAudit?: FingerprintAudit[];
+  profileAudit?: ProfileAudit[];
   version: number;
+}
+export interface ProfileAudit {
+  at: string;
+  by: string;
+  reason: string;
+  changes: Partial<Record<keyof Person, { before: string; after: string }>>;
 }
 export interface Transaction {
   id: string;
@@ -97,6 +106,9 @@ export interface Transaction {
   syncState: SyncState;
 }
 export interface Amendment {
+  kind?: "correction" | "void" | "photo";
+  previousAmendmentId?: string | null;
+  photoChange?: { slot: "person" | "idFront"; action: "add" | "replace" | "remove" | "adjust" };
   id: string;
   recordId: string;
   reason: string;
@@ -121,6 +133,7 @@ export interface Operation {
   error?: string;
 }
 export const emptyPerson = (): Person => ({
+  idType: "enid",
   name: "",
   fatherName: "",
   grandfatherName: "",

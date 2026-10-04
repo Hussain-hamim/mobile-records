@@ -78,7 +78,7 @@ export async function ensureDemoData(repo: Repository, uuid: () => string) {
         customer: {
           ...emptyPerson(),
           name: ["Farid Ahmad", "Zahra Karimi", "Omid Rahimi"][i],
-          idNumber: "DEMO-" + (i + 1),
+          idNumber: "0000-0000-0000" + (i + 1),
           phone: "+9370000000" + i,
         },
         customerId: "",

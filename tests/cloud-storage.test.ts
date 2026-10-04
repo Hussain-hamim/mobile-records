@@ -15,7 +15,7 @@ const membership: Membership = { userId: owner, shopId: shop, role: "owner", ver
   profile: { ...emptyShop(), name: "Test owner", shopName: "Test shop", address: "Kabul" } };
 const draft = (direction: "buy" | "sell" = "buy"): Draft => ({
   id: randomUUID(), direction, phone: { ...emptyPhone(), model: "Test phone", imei1: "490154203237518" },
-  customer: { ...emptyPerson(), name: "Test customer", idNumber: "123" }, customerId: "", customerConfirmed: true,
+  customer: { ...emptyPerson(), name: "Test customer", idNumber: "1234-1234-12345" }, customerId: "", customerConfirmed: true,
   price: "100", createdAt: new Date().toISOString(), step: 2,
 });
 
@@ -25,7 +25,7 @@ async function setup() {
     create schema auth; create table auth.users(id uuid primary key);
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
     grant usage on schema auth to authenticated; grant execute on function auth.uid() to authenticated;`);
-  for (const file of ["20261001072643_mobile_records", "20261003120000_fingerprint_templates", "20261003120001_fingerprint_profiles", "20261003111750_hosted_access_hardening", "20261003130510_cloud_record_storage"])
+  for (const file of ["20261001072643_mobile_records", "20261003120000_fingerprint_templates", "20261003120001_fingerprint_profiles", "20261003111750_hosted_access_hardening", "20261003130510_cloud_record_storage", "20261004112532_audited_record_customer_edits"])
     await db.exec(readFileSync(new URL(`../supabase/migrations/${file}.sql`, import.meta.url), "utf8"));
   await db.exec(`insert into auth.users values('${owner}'),('${staff}'),('${outsider}');
     insert into account_status values('${owner}',false),('${staff}',false),('${outsider}',false);

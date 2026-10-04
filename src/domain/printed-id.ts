@@ -3,7 +3,7 @@ import { digits } from "./validation";
 
 // Accept labelled text only. Never assign arbitrary OCR lines by their position
 // on a particular card, or infer relatives/address from the holder's name.
-const labels: Partial<Record<keyof Person, string[]>> = {
+const labels: Partial<Record<Exclude<keyof Person, "idType">, string[]>> = {
   grandfatherName: [
     "Grandfather's name",
     "Grandfather name",
@@ -106,7 +106,7 @@ const patterns = Object.entries(labels).map(([key, names]) => {
     .join("|");
   const pattern = `(?:${aliases})(?:\\s*/\\s*(?:${aliases}))*`;
   return {
-    key: key as keyof Person,
+    key: key as Exclude<keyof Person, "idType">,
     only: new RegExp(`^(?:${pattern})\\s*[:：=-]?$`, "iu"),
     before: new RegExp(`^(?:${pattern})(?:\\s*[:：=]\\s*|\\s+)(.+)$`, "iu"),
     after: new RegExp(`^(.+?)\\s*[:：=]\\s*(?:${pattern})$`, "iu"),
@@ -116,7 +116,10 @@ export function isPrintedLabel(text: string) {
   return patterns.some((p) => p.only.test(labelText(clean(text))));
 }
 
-function valueFor(key: keyof Person, raw: string): string | null {
+function valueFor(
+  key: Exclude<keyof Person, "idType">,
+  raw: string,
+): string | null {
   const value = clean(raw);
   if (
     !value ||
@@ -165,7 +168,7 @@ export function extractPrintedPerson(
   language: Language,
 ): Partial<Person> {
   const lines = text.split(/\r?\n/).map(clean).filter(Boolean);
-  const candidates = new Map<keyof Person, Set<string>>();
+  const candidates = new Map<Exclude<keyof Person, "idType">, Set<string>>();
   for (let i = 0; i < lines.length; i++) {
     const line = labelText(lines[i]);
     for (const pattern of patterns) {
@@ -201,7 +204,7 @@ export function mergeScanFields(
 ): Person {
   const result = { ...current };
   for (const [key, value] of Object.entries(incoming) as [
-    keyof Person,
+    Exclude<keyof Person, "idType">,
     string,
   ][]) {
     // Preserve previously reviewed values and MRZ results when scanning the

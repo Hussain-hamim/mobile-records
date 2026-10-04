@@ -7,15 +7,27 @@ import type {
   ShopProfile,
   Transaction,
   FingerprintEntry,
+  Person,
 } from "../domain/models";
 import type { Vault } from "./vault";
-import { digits, normalizeImei, validateDraft } from "../domain/validation";
+import {
+  digits,
+  normalizeImei,
+  validateDraft,
+  validTazkiraNumber,
+} from "../domain/validation";
 import {
   draftFingerprints,
   fingerprintsOf,
   fingerprintChanges,
   validFingerprintSkip,
 } from "../domain/fingerprints";
+import {
+  profileChanges,
+  latestAmendment,
+  isVoided,
+  sameData,
+} from "../domain/edit-policy";
 type Change = { key: string; value: unknown | null };
 export class Repository {
   private writes: Promise<unknown> = Promise.resolve();
@@ -47,6 +59,13 @@ export class Repository {
   saveDraft(draft: Draft) {
     return this.vault.batch([{ key: "draft:" + draft.id, value: draft }]);
   }
+  discardDraft(id: string) {
+    return this.atomic(async () => {
+      if (await this.vault.get<Transaction>("record:" + id))
+        throw new Error("noAccess");
+      await this.vault.batch([{ key: "draft:" + id, value: null }]);
+    });
+  }
   async mutableOperation(
     kind: "customer" | "shop",
     payload: { id: string } & Record<string, unknown>,
@@ -59,14 +78,19 @@ export class Repository {
       id: existing?.id ?? this.uuid(),
       kind,
       payload:
-        kind === "customer" &&
-        payload.fingerprintReason === undefined &&
-        existing
+        kind === "customer"
           ? {
               ...payload,
+              profileReason:
+                payload.profileReason ??
+                (existing?.payload as Record<string, unknown> | undefined)
+                  ?.profileReason ??
+                "",
               fingerprintReason:
-                (existing.payload as Record<string, unknown>)
-                  .fingerprintReason ?? "",
+                payload.fingerprintReason ??
+                (existing?.payload as Record<string, unknown> | undefined)
+                  ?.fingerprintReason ??
+                "",
             }
           : payload,
       baseVersion: existing?.baseVersion ?? version,
@@ -85,6 +109,59 @@ export class Repository {
     );
     await this.vault.batch([{ key: "profile", value: profile }, op]);
     this.membership.profile = profile;
+  }
+  saveCustomer(
+    customerId: string,
+    person: Person,
+    reason: string,
+    expectedVersion: number,
+    expectedPerson: Person,
+  ) {
+    return this.atomic(async () => {
+      const current = await this.vault.get<Customer>("customer:" + customerId);
+      if (
+        !current ||
+        current.version !== expectedVersion ||
+        !sameData(current.person, expectedPerson)
+      )
+        throw new Error("conflict");
+      if (!person.name.trim() || !person.idNumber.trim())
+        throw new Error("requiredFields");
+      if (
+        (person.idNumber !== current.person.idNumber ||
+          person.idType !== current.person.idType) &&
+        !validTazkiraNumber(person.idNumber, person.idType ?? "enid")
+      )
+        throw new Error(
+          person.idType === "pnid" ? "invalidPnid" : "invalidEnid",
+        );
+      const event = profileChanges(
+        current.person,
+        person,
+        this.membership,
+        reason,
+        new Date().toISOString(),
+      );
+      if (!event) return;
+      const customer = {
+        ...current,
+        person,
+        profileAudit: [...(current.profileAudit ?? []), event],
+      };
+      await this.vault.batch([
+        { key: "customer:" + customerId, value: customer },
+        await this.mutableOperation(
+          "customer",
+          {
+            id: customerId,
+            person,
+            fingerprints: fingerprintsOf(current),
+            profileReason: reason,
+          },
+          current.version,
+        ),
+      ]);
+    });
   }
   saveFingerprints(
     customerId: string,
@@ -161,9 +238,18 @@ export class Repository {
       "",
       now,
     );
+    if (previous)
+      profileChanges(
+        previous.person,
+        draft.customer,
+        this.membership,
+        "Transaction details",
+        now,
+      );
     const customer: Customer = {
+      ...previous,
       id: customerId,
-      person: { ...draft.customer },
+      person: { ...(previous?.person ?? draft.customer) },
       fingerprints,
       fingerprintAudit: [...(previous?.fingerprintAudit ?? []), ...audit],
       version: previous?.version ?? 0,
@@ -223,12 +309,63 @@ export class Repository {
       ? { ...record, syncState: "synced" as const }
       : record;
   }
-  amend(record: Transaction, reason: string) {
-    return this.atomic(() => this.writeAmendment(record, reason));
+  amend(
+    record: Transaction,
+    reason: string,
+    previousAmendmentId?: string | null,
+    kind: Amendment["kind"] = "correction",
+    photoChange?: Amendment["photoChange"],
+  ) {
+    return this.atomic(() =>
+      this.writeAmendment(
+        record,
+        reason,
+        previousAmendmentId,
+        kind,
+        photoChange,
+      ),
+    );
   }
-  private async writeAmendment(record: Transaction, reason: string) {
-    if (this.membership.role !== "owner" || !reason.trim())
+  private async writeAmendment(
+    record: Transaction,
+    reason: string,
+    previousAmendmentId: string | null | undefined,
+    kind: Amendment["kind"],
+    photoChange?: Amendment["photoChange"],
+  ) {
+    if (
+      this.membership.role !== "owner" ||
+      !reason.trim() ||
+      reason.length > 500
+    )
       throw new Error("requiredFields");
+    const original = await this.vault.get<Transaction>("record:" + record.id);
+    if (!original) throw new Error("noAccess");
+    const history = await this.amendments();
+    const latest = latestAmendment(history, record.id);
+    if ((previousAmendmentId ?? null) !== (latest?.id ?? null))
+      throw new Error("conflict");
+    if (isVoided(history, record.id)) throw new Error("recordVoided");
+    for (const key of [
+      "id",
+      "reference",
+      "shopId",
+      "createdBy",
+      "customerId",
+      "occurredAt",
+      "currency",
+      "templateVersion",
+    ] as const) {
+      if (record[key] !== original[key]) throw new Error("noAccess");
+    }
+    if (
+      kind !== "correction" &&
+      !sameData(
+        { ...record, syncState: undefined },
+        { ...original, syncState: undefined },
+      )
+    )
+      throw new Error("noAccess");
     const errors = validateDraft({
       id: record.id,
       direction: record.direction,
@@ -242,6 +379,9 @@ export class Repository {
     });
     if (errors.length) throw new Error(errors[0]);
     const amendment: Amendment = {
+      kind,
+      previousAmendmentId: previousAmendmentId ?? null,
+      ...(photoChange ? { photoChange } : {}),
       id: this.uuid(),
       recordId: record.id,
       reason,

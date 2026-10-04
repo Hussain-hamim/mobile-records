@@ -1,9 +1,10 @@
 import * as Crypto from "expo-crypto";
-import { useState } from "react";
-import { View } from "react-native";
+import { useRef, useState } from "react";
+import { View, type ViewStyle } from "react-native";
 import { scanTemplates } from "../domain/fingerprints";
 import type { FingerprintEntry, FingerprintSlot } from "../domain/models";
 import { useApp } from "../state/app-context";
+import { playEnrollmentSuccess } from "../services/enrollment-sound";
 import { FingerprintPrompt } from "./fingerprint-prompt";
 import {
     Button,
@@ -24,6 +25,7 @@ export function FingerprintCards({
   onDuplicate,
   temporaryIds = [],
   manageStored = true,
+  cardStyle,
 }: {
   entries: FingerprintEntry[];
   customerId: string;
@@ -34,6 +36,7 @@ export function FingerprintCards({
   onDuplicate?: (id: string) => void;
   temporaryIds?: string[];
   manageStored?: boolean;
+  cardStyle?: ViewStyle;
 }) {
   const app = useApp(),
     { t } = app;
@@ -47,11 +50,15 @@ export function FingerprintCards({
     [error, setError] = useState("");
   const original = entries.find((f) => f.slot === action?.slot);
   const needsReason = !!original && !temporaryIds.includes(original.id);
-  async function save(next: FingerprintEntry[]) {
+  const saving = useRef(false);
+  async function save(next: FingerprintEntry[], enrollment = false) {
+    if (saving.current) return;
+    saving.current = true;
     setBusy(true);
     setError("");
     try {
       await onChange(next, reason);
+      if (enrollment) void playEnrollmentSuccess();
       setAction(null);
       setReason("");
       setScanning(false);
@@ -59,6 +66,7 @@ export function FingerprintCards({
       setScanning(false);
       setError(errorText(e, t));
     } finally {
+      saving.current = false;
       setBusy(false);
     }
   }
@@ -76,7 +84,7 @@ export function FingerprintCards({
           (manageStored && app.membership?.role === "owner") ||
           (finger && temporaryIds.includes(finger.id));
         return (
-          <Card key={slot}>
+          <Card key={slot} style={cardStyle}>
             <Row>
               <Icon
                 name="fingerprint"
@@ -173,16 +181,19 @@ export function FingerprintCards({
               .map((f) => ({ id: f.id, customerId, template: f.template })),
           ]}
           onEnrolled={(template) =>
-            save([
-              ...entries.filter((f) => f.slot !== action.slot),
-              {
-                id: Crypto.randomUUID(),
-                slot: action.slot,
-                template,
-                enrolledAt: new Date().toISOString(),
-                enrolledBy: app.membership!.userId,
-              },
-            ])
+            save(
+              [
+                ...entries.filter((f) => f.slot !== action.slot),
+                {
+                  id: Crypto.randomUUID(),
+                  slot: action.slot,
+                  template,
+                  enrolledAt: new Date().toISOString(),
+                  enrolledBy: app.membership!.userId,
+                },
+              ],
+              true,
+            )
           }
           onDuplicate={onDuplicate}
           onClose={() => setScanning(false)}

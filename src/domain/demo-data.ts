@@ -18,7 +18,8 @@ const customer: Person = {
   name: "Ahmad — DEMO",
   fatherName: "Mohammad — DEMO",
   grandfatherName: "Ali — DEMO",
-  idNumber: "DEMO-ENID-001",
+  idType: "enid",
+  idNumber: "0000-0000-00001",
   originalAddress: "Kabul, Afghanistan — sample address",
   currentAddress: "Demo Street, House 12, Kabul — sample address",
   // Reserved fictional North American numbers, not real customer contacts.
@@ -46,7 +47,10 @@ export function fillDemoStep(draft: Draft): Draft {
           customerConfirmed: true,
           fingerprintTemplate: undefined,
           fingerprints: [],
-          fingerprintSkip: { reason: "readerUnavailable", note: "Demo presentation" },
+          fingerprintSkip: {
+            reason: "readerUnavailable",
+            note: "Demo presentation",
+          },
         }
       : {}),
   };

@@ -25,6 +25,13 @@ export function formatMoney(value: string | number, _language: Language) {
     }).format(Number(digits(String(value)))) + " AFN"
   );
 }
+export function phoneLabel(brand: string, model: string) {
+  const name = (model.split(",")[0] || model).trim();
+  const make = brand.trim();
+  if (!make || name.toLowerCase().includes(make.toLowerCase()))
+    return name || make;
+  return `${make} ${name}`.trim();
+}
 export function localDay(date: string) {
   return new Intl.DateTimeFormat("en-CA", {
     numberingSystem: "latn",
@@ -33,4 +40,10 @@ export function localDay(date: string) {
     month: "2-digit",
     day: "2-digit",
   }).format(new Date(date));
+}
+
+/** Audit timestamps use the selected calendar and explicit Kabul local time. */
+export function formatAuditDate(value: string, language: Language, gregorian: boolean) {
+  const time = new Intl.DateTimeFormat(language === "en" ? "en-GB" : language === "fa" ? "fa-AF" : "ps-AF", { timeZone: "Asia/Kabul", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(new Date(value));
+  return `${formatDate(value, language, gregorian)} · ${time}`;
 }

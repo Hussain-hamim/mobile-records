@@ -1,11 +1,11 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Image, Pressable, StyleSheet, View } from "react-native";
 import { FingerprintPrompt } from "../../components/fingerprint-prompt";
+import { HomeInsights } from "../../components/home-insights";
 import { RecordRow } from "../../components/record-row";
 import {
   Button,
-  Card,
   Empty,
   Icon,
   IconButton,
@@ -15,43 +15,44 @@ import {
   Txt,
   colors,
 } from "../../components/ui";
-import { formatDate, localDay } from "../../domain/format";
 import { scanTemplates } from "../../domain/fingerprints";
+import { formatDate } from "../../domain/format";
 import { useApp } from "../../state/app-context";
 export default function Home() {
   const app = useApp();
   const { t, rtl } = app;
   const [finger, setFinger] = useState(false);
   const [fpError, setFpError] = useState("");
-  const today = app.records.filter(
-    (r) => localDay(r.occurredAt) === localDay(new Date().toISOString()),
-  );
   return (
     <Screen>
-      <Row style={{ justifyContent: "space-between", marginBottom: 28 }}>
-        <Row style={{ flex: 1 }}>
-          <View style={styles.brand}>
-            <Icon name="cellphone-check" color="#fff" size={25} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Txt size={16} bold>
-              {t("app")}
-            </Txt>
-            <Txt size={11} muted>
-              {formatDate(
-                new Date().toISOString(),
-                app.language,
-                app.gregorian,
-              )}
-            </Txt>
-          </View>
-        </Row>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 28,
+        }}
+      >
+        <Image
+          source={require("../../../assets/Radefy Systems - Logo Variations by Alif Design-04.png")}
+          accessibilityLabel="Radefy Systems"
+          resizeMode="contain"
+          style={{ width: 64, height: 64 }}
+        />
+        <View style={{ flex: 1, marginHorizontal: 8 }}>
+          <Txt size={16} bold>
+            {t("app")}
+          </Txt>
+          <Txt size={11} muted>
+            {formatDate(new Date().toISOString(), app.language, app.gregorian)}
+          </Txt>
+        </View>
         <IconButton
           label={t("settings")}
           icon="storefront-outline"
           onPress={() => router.push("/settings")}
         />
-      </Row>
+      </View>
       <Row style={{ justifyContent: "space-between", marginBottom: 4 }}>
         <Txt size={12} muted>
           {t("welcomeBack")}
@@ -159,50 +160,7 @@ export default function Home() {
         </Row>
       </Pressable>
       <Notice message={fpError} tone="error" />
-      <Card
-        style={{
-          backgroundColor: colors.navy,
-          borderColor: colors.navy,
-          padding: 20,
-          marginBottom: 26,
-        }}
-      >
-        <Row style={{ justifyContent: "space-between", marginBottom: 16 }}>
-          <Txt color="#D8DBF1" size={12}>
-            {t("overview")}
-          </Txt>
-          <Icon name="chart-timeline-variant" color={colors.lime} size={22} />
-        </Row>
-        <Row style={{ justifyContent: "space-between", gap: 6 }}>
-          {[
-            [String(today.length).padStart(2, "0"), t("records")],
-            [today.filter((r) => r.direction === "buy").length, t("bought")],
-            [today.filter((r) => r.direction === "sell").length, t("sold")],
-          ].map(([count, label], index) => (
-            <View
-              key={label}
-              style={{
-                flex: 1,
-                alignItems:
-                  index === 0 ? (rtl ? "flex-end" : "flex-start") : "center",
-                borderStartWidth: index ? 1 : 0,
-                borderColor: "#41455F",
-              }}
-            >
-              <Txt
-                size={index === 0 ? 30 : 26}
-                color={index === 0 ? colors.lime : "#fff"}
-                bold
-              >
-                {count}
-              </Txt>
-              <Txt size={11} color="#B7BCD5">
-                {label}
-              </Txt>
-            </View>
-          ))}
-        </Row>
-      </Card>
+      <HomeInsights />
       {app.drafts.length ? (
         <View style={{ marginBottom: 20 }}>
           <Button
@@ -297,14 +255,6 @@ export default function Home() {
   );
 }
 const styles = StyleSheet.create({
-  brand: {
-    backgroundColor: colors.green,
-    width: 46,
-    height: 46,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   demo: {
     flexDirection: "row",
     alignItems: "center",

@@ -1,3 +1,4 @@
+import type { ReceiptContext } from "../domain/receipt-attachments";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { File } from "expo-file-system";
@@ -9,8 +10,15 @@ export async function printRecord(
   gregorian: boolean,
   share = false,
   correction?: string,
+  context?: ReceiptContext,
 ) {
-  const html = await recordHtml(record, language, gregorian, correction);
+  const html = await recordHtml(
+    record,
+    language,
+    gregorian,
+    correction,
+    context,
+  );
   if (!share) {
     await Print.printAsync({ html });
     return;

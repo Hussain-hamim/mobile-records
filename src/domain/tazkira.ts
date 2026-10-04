@@ -19,14 +19,14 @@ export type OcrDocument = {
   height: number;
 };
 export type ScanCandidate = {
-  key: keyof Person;
+  key: Exclude<keyof Person, "idType">;
   value: string;
   source: "offline" | "google";
   confidence: number;
   mrzChecked: boolean;
 };
 export type ScanConflict = {
-  key: keyof Person;
+  key: Exclude<keyof Person, "idType">;
   current: string;
   candidate: ScanCandidate;
 };
@@ -132,7 +132,7 @@ export function documentCandidates(
     )) {
       if (value)
         candidates.push({
-          key: key as keyof Person,
+          key: key as Exclude<keyof Person, "idType">,
           value,
           source,
           confidence,

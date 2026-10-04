@@ -48,7 +48,9 @@ export function createChunkStorage(items: SecureItems, uuid: () => string) {
             characters.slice(i * 400, (i + 1) * 400).join(""),
           );
         await items.setItemAsync(key + ".manifest", JSON.stringify(next));
-        await removeGeneration(key, old);
+        // The new manifest is already committed; cleanup failure must not
+        // make callers roll back files referenced by the committed value.
+        await removeGeneration(key, old).catch(() => {});
       });
     },
     removeItem(key: string) {

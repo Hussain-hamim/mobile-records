@@ -48,7 +48,7 @@ const customer = (): Customer => ({
 const draft = (): Draft => ({
   id: randomUUID(),
   customerId: "",
-  customer: { ...emptyPerson(), name: "A", idNumber: "123" },
+  customer: { ...emptyPerson(), name: "A", idNumber: "1234-1234-12345" },
   phone: { ...emptyPhone(), model: "Test", imei1: "490154203237518" },
   direction: "buy",
   customerConfirmed: true,

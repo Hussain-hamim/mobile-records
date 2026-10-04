@@ -61,7 +61,7 @@ test("Postgres policies enforce tenant isolation, immutable records, password ga
       currency: "AFN",
       templateVersion: "draft-v1",
       phone: { ...emptyPhone(), model: "Test", imei1: "490154203237518" },
-      customer: { ...emptyPerson(), name: "Test", idNumber: "123" },
+      customer: { ...emptyPerson(), name: "Test", idNumber: "1234-1234-12345" },
       shop: emptyShop(),
       price: "10",
       occurredAt: new Date().toISOString(),

@@ -1,9 +1,13 @@
+import { fingerprintsOf } from "../../domain/fingerprints";
+import type { ReceiptContext } from "../../domain/receipt-attachments";
+import { RecordChanges } from "../../components/record-changes";
 import { useState } from "react";
 import { View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useApp } from "../../state/app-context";
 import {
   Button,
+  Chip,
   Card,
   Field,
   Icon,
@@ -21,8 +25,9 @@ import { printRecord } from "../../services/printing";
 import type { FormPicture } from "../../services/form-image-types";
 import { FormPicturePreview } from "../../components/form-picture-preview";
 import { saveFormImage } from "../../services/form-image";
-import { formatDate, formatMoney } from "../../domain/format";
+import { formatDate, formatAuditDate, formatMoney } from "../../domain/format";
 import type { Transaction } from "../../domain/models";
+import { RecordPhotos } from "../../components/record-photos";
 export default function RecordDetail() {
   const app = useApp();
   const { t } = app;
@@ -32,6 +37,10 @@ export default function RecordDetail() {
     .filter((a) => a.recordId === id)
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   const [edit, setEdit] = useState<Transaction | null>(null);
+  const [editBase, setEditBase] = useState<string | null>(null);
+  const [voiding, setVoiding] = useState(false);
+  const voided = corrections.some((a) => a.kind === "void");
+  const latestId = corrections.at(-1)?.id ?? null;
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -55,6 +64,17 @@ export default function RecordDetail() {
         <Button label={t("back")} onPress={() => router.back()} />
       </Screen>
     );
+  function receiptContext(snapshot: Transaction): ReceiptContext | undefined {
+    if (!app.membership) return undefined;
+    const customer = app.customers.find((c) => c.id === snapshot.customerId);
+    return {
+      shopId: app.membership.shopId,
+      userId: app.membership.userId,
+      fingerprintEnrolled: customer
+        ? fingerprintsOf(customer).length > 0
+        : undefined,
+    };
+  }
   const op = app.operations.find(
     (o) => o.kind === "record" && (o.payload as Transaction).id === record.id,
   );
@@ -87,6 +107,10 @@ export default function RecordDetail() {
       <Notice message={error} tone="error" />
       <Notice message={message} />
       <Notice message={t("draftForm")} />
+      {voided ? <Notice message={t("recordVoided")} tone="error" /> : null}
+      <Txt muted size={12}>
+        {t("originalRecord")}
+      </Txt>
       <Card style={{ backgroundColor: colors.navy, borderColor: colors.navy }}>
         <Row style={{ justifyContent: "space-between", marginBottom: 20 }}>
           <View
@@ -117,7 +141,7 @@ export default function RecordDetail() {
       <Card>
         <SectionTitle title={t("phoneDetails")} icon="cellphone" />
         {Object.entries(record.phone)
-          .filter(([, v]) => v)
+          .filter(([k, v]) => v && k !== "brand" && k !== "model")
           .map(([k, v]) => (
             <Row
               key={k}
@@ -143,6 +167,12 @@ export default function RecordDetail() {
       </Card>
       <Card>
         <SectionTitle title={t("customerDetails")} icon="account-outline" />
+        <RecordPhotos
+          recordId={record.id}
+          direction={record.direction}
+          editable={app.membership?.role === "owner" && !voided}
+          savedRecord={record}
+        />
         {Object.entries(record.customer)
           .filter(([, v]) => v)
           .map(([k, v]) => (
@@ -150,7 +180,9 @@ export default function RecordDetail() {
               <Txt muted size={11}>
                 {t(k as keyof typeof record.customer)}
               </Txt>
-              <Txt size={14}>{v}</Txt>
+              <Txt size={14}>
+                {k === "idType" ? t(v === "pnid" ? "pnid" : "enid") : v}
+              </Txt>
             </View>
           ))}
       </Card>
@@ -161,7 +193,16 @@ export default function RecordDetail() {
             icon="printer-outline"
             loading={busy}
             onPress={() =>
-              void run(() => printRecord(record, app.language, app.gregorian))
+              void run(() =>
+                printRecord(
+                  record,
+                  app.language,
+                  app.gregorian,
+                  false,
+                  voided ? t("recordVoided") : undefined,
+                  receiptContext(record),
+                ),
+              )
             }
           />
         </View>
@@ -172,7 +213,14 @@ export default function RecordDetail() {
           loading={busy}
           onPress={() =>
             void run(() =>
-              printRecord(record, app.language, app.gregorian, true),
+              printRecord(
+                record,
+                app.language,
+                app.gregorian,
+                true,
+                voided ? t("recordVoided") : undefined,
+                receiptContext(record),
+              ),
             )
           }
         />
@@ -189,8 +237,9 @@ export default function RecordDetail() {
                 record,
                 app.language,
                 app.gregorian,
-                undefined,
+                voided ? t("recordVoided") : undefined,
                 setPicture,
+                receiptContext(record),
               );
               if (result) setMessage(t(result));
             })
@@ -201,70 +250,177 @@ export default function RecordDetail() {
       {corrections.length ? (
         <Card>
           <Txt bold>{t("amendments")}</Txt>
-          {corrections.map((a) => (
+          {corrections.map((a, index) => (
             <View key={a.id} style={{ marginTop: 15 }}>
-              <Txt>{a.reason}</Txt>
-              <Txt muted size={11}>
-                {formatDate(a.createdAt, app.language, app.gregorian)}
+              <Txt bold>
+                {t(
+                  a.kind === "void"
+                    ? "recordVoided"
+                    : a.kind === "photo"
+                      ? "photoChange"
+                      : "correction",
+                )}
               </Txt>
-              <Button
-                small
-                secondary
-                label={t("print")}
-                disabled={busy}
-                onPress={() =>
-                  void run(() =>
-                    printRecord(
-                      a.snapshot,
-                      app.language,
-                      app.gregorian,
-                      false,
-                      a.reason,
-                    ),
-                  )
-                }
-              />
-              <View style={{ marginTop: 8 }}>
-                <Button
-                  small
-                  secondary
-                  icon="image-outline"
-                  label={t("savePicture")}
-                  disabled={busy}
-                  onPress={() =>
-                    void run(async () => {
-                      const result = await saveFormImage(
-                        a.snapshot,
-                        app.language,
-                        app.gregorian,
-                        a.reason,
-                        setPicture,
-                      );
-                      if (result) setMessage(t(result));
-                    })
+              <Txt>{a.reason}</Txt>
+              {!a.kind || a.kind === "correction" ? (
+                <RecordChanges
+                  before={
+                    corrections
+                      .slice(0, index)
+                      .filter((c) => !c.kind || c.kind === "correction")
+                      .at(-1)?.snapshot ?? record
                   }
+                  after={a.snapshot}
                 />
-              </View>
+              ) : null}
+              <Txt muted size={12}>
+                {t("changedBy")}: {a.createdBy}
+              </Txt>
+              {a.kind === "photo" && a.photoChange ? (
+                <Txt size={12}>
+                  {t(
+                    a.photoChange.slot === "person"
+                      ? "sellerPhoto"
+                      : "idFrontPhoto",
+                  )}{" "}
+                  ·{" "}
+                  {t(
+                    a.photoChange.action === "remove"
+                      ? "removePhoto"
+                      : a.photoChange.action === "adjust"
+                        ? "adjustView"
+                        : "replacePhoto",
+                  )}
+                </Txt>
+              ) : null}
+              <Txt muted size={11}>
+                {formatAuditDate(a.createdAt, app.language, app.gregorian)}
+              </Txt>
+              {!a.kind || a.kind === "correction" ? (
+                <>
+                  <Button
+                    small
+                    secondary
+                    label={t("print")}
+                    disabled={busy}
+                    onPress={() =>
+                      void run(() =>
+                        printRecord(
+                          a.snapshot,
+                          app.language,
+                          app.gregorian,
+                          false,
+                          voided
+                            ? `${t("recordVoided")} · ${a.reason}`
+                            : a.reason,
+                          receiptContext(a.snapshot),
+                        ),
+                      )
+                    }
+                  />
+                  <View style={{ marginTop: 8 }}>
+                    <Button
+                      small
+                      secondary
+                      icon="image-outline"
+                      label={t("savePicture")}
+                      disabled={busy}
+                      onPress={() =>
+                        void run(async () => {
+                          const result = await saveFormImage(
+                            a.snapshot,
+                            app.language,
+                            app.gregorian,
+                            voided
+                              ? `${t("recordVoided")} · ${a.reason}`
+                              : a.reason,
+                            setPicture,
+                            receiptContext(a.snapshot),
+                          );
+                          if (result) setMessage(t(result));
+                        })
+                      }
+                    />
+                  </View>
+                </>
+              ) : null}
             </View>
           ))}
         </Card>
       ) : null}
-      {app.membership?.role === "owner" && !edit ? (
+      {app.membership?.role === "owner" && !edit && !voided && !voiding ? (
         <Button
           secondary
           label={t("amend")}
-          onPress={() =>
+          onPress={() => {
+            setEditBase(latestId);
             setEdit(
               JSON.parse(
-                JSON.stringify(corrections.at(-1)?.snapshot ?? record),
+                JSON.stringify(
+                  corrections
+                    .filter((a) => !a.kind || a.kind === "correction")
+                    .at(-1)?.snapshot ?? record,
+                ),
               ) as Transaction,
-            )
-          }
+            );
+          }}
         />
+      ) : null}
+      {app.membership?.role === "owner" && !voided && !edit ? (
+        voiding ? (
+          <Card>
+            <Notice message={t("voidHint")} />
+            <Field
+              label={t("reason")}
+              value={reason}
+              onChangeText={setReason}
+              maxLength={500}
+            />
+            <Button
+              label={t("confirmVoid")}
+              loading={busy}
+              disabled={busy || !reason.trim()}
+              onPress={() =>
+                void run(async () => {
+                  await app.amend(record, reason, editBase, "void");
+                  setVoiding(false);
+                  setReason("");
+                })
+              }
+            />
+            <Button
+              secondary
+              label={t("cancel")}
+              disabled={busy}
+              onPress={() => setVoiding(false)}
+            />
+          </Card>
+        ) : (
+          <Button
+            secondary
+            icon="cancel"
+            label={t("voidRecord")}
+            onPress={() => {
+              setEditBase(latestId);
+              setReason("");
+              setVoiding(true);
+            }}
+          />
+        )
       ) : null}
       {edit ? (
         <Card>
           <Field label={t("reason")} value={reason} onChangeText={setReason} />
+          <Row style={{ marginBottom: 16 }}>
+            {(["buy", "sell"] as const).map((direction) => (
+              <Chip
+                key={direction}
+                label={t(direction)}
+                active={edit.direction === direction}
+                onPress={() => setEdit({ ...edit, direction })}
+              />
+            ))}
+          </Row>
           <PersonFields
             value={edit.customer}
             onChange={(customer) => setEdit({ ...edit, customer })}
@@ -290,7 +446,7 @@ export default function RecordDetail() {
             loading={busy}
             onPress={() =>
               void run(async () => {
-                await app.amend(edit, reason);
+                await app.amend(edit, reason, editBase);
                 setEdit(null);
                 setReason("");
               })

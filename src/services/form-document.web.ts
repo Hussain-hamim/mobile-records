@@ -1,3 +1,5 @@
+import { loadReceiptAttachments } from "../domain/receipt-attachments";
+import type { ReceiptContext } from "../domain/receipt-attachments";
 import { Asset } from "expo-asset";
 import type { Language, Transaction } from "../domain/models";
 import { formHtml } from "../domain/print-template";
@@ -7,6 +9,7 @@ export async function recordHtml(
   language: Language,
   gregorian: boolean,
   correction?: string,
+  context?: ReceiptContext,
 ) {
   const font = Asset.fromModule(
     language === "ps"
@@ -22,5 +25,13 @@ export async function recordHtml(
     reader.onload = () => resolve(String(reader.result).split(",")[1]);
     reader.readAsDataURL(blob);
   });
-  return formHtml(record, language, base64, gregorian, correction);
+  const attachments = context
+    ? await loadReceiptAttachments(
+        record,
+        context,
+        async () => ({ photos: {} }),
+        async () => undefined,
+      )
+    : undefined;
+  return formHtml(record, language, base64, gregorian, correction, attachments);
 }

@@ -18,7 +18,7 @@ export function cloudVault(api: SupabaseClient, membership: Membership): Vault {
     customer: {
       table: "customers",
       fields:
-        "id,person,fingerprint_template,fingerprints,fingerprint_audit,version",
+        "id,person,fingerprint_template,fingerprints,fingerprint_audit,profile_audit,version",
     },
     amendment: { table: "amendments", fields: "id,payload" },
     draft: { table: "transaction_drafts", fields: "id,payload" },

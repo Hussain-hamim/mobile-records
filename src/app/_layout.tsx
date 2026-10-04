@@ -1,6 +1,7 @@
 import { useFonts } from "expo-font";
 import { Stack, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { AppLoadingScreen } from "../components/app-loading-screen";
 import { AuthScreen } from "../components/auth-screen";
 import { colors } from "../components/ui";
 import { AppProvider, useApp } from "../state/app-context";
@@ -9,7 +10,9 @@ function Routes() {
   return (
     <>
       <StatusBar style="dark" />
-      {phase === "ready" ? (
+      {phase === "loading" ? (
+        <AppLoadingScreen />
+      ) : phase === "ready" ? (
         <Stack
           screenOptions={{
             headerShown: false,

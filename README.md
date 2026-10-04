@@ -56,6 +56,10 @@ Shop/customer changes compare server versions and reject conflicts. Refresh and 
 
 The new storage path requires the `cloud_record_storage` migration. Local PostgreSQL tests cover atomic rollback, buy/sell retries, late drafts, staff/shop isolation, and revoked membership. They do not replace a signed-in Android/network-interruption acceptance check.
 
+## Local customer and ID photos
+
+Step 2 includes a compact row for the buyer/seller photo and Tazkira front. Take or select photos on Android or iPhone, including Expo Go; tap a tile in record creation or saved record details to preview, replace or remove it. Android Settings can choose a local folder for new photo sets; iPhone uses the app’s private Documents folder. These optional attachments and their paths stay on this device, separate from Supabase records and temporary OCR images. See [local photo storage and device checks](docs/LOCAL-PHOTOS.md).
+
 ## Printing and release gates
 
 Saved records and corrections also offer **Save as picture**. The browser shows an image preview with a **Download PNG** button. Android uses the same PDF template, renders each page as a 200 dpi PNG, and saves to a folder chosen through the system picker. This requires a new development build containing the local `RecordExport` module. No gallery-read permission is requested; temporary rendering files are deleted after export and abandoned export folders are removed at startup. The exported pictures contain the confirmed form fields, never the original ENID photos.

@@ -22,6 +22,7 @@ import {
   errorText,
 } from "../../components/ui";
 import { PersonFields } from "../../components/person-fields";
+import { PhotoFolderSettings } from "../../components/record-photos";
 export default function Settings() {
   const app = useApp();
   const { t } = app;
@@ -82,6 +83,7 @@ export default function Settings() {
         </Row>
       </Card>
       <Notice message={message} />
+      <PhotoFolderSettings />
       <Card>
         <Button
           secondary

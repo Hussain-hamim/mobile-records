@@ -1,3 +1,4 @@
+import type { ReceiptContext } from "../domain/receipt-attachments";
 import { Directory, File, Paths } from "expo-file-system";
 import * as Print from "expo-print";
 import * as Crypto from "expo-crypto";
@@ -16,6 +17,7 @@ export async function saveFormImage(
   gregorian: boolean,
   correction?: string,
   _onPreview?: (picture: FormPicture) => void,
+  context?: ReceiptContext,
 ): Promise<"imageReady" | "imageSaved" | null> {
   if (!native) throw new Error("imageNativeRequired");
   let destination: Directory;
@@ -35,7 +37,13 @@ export async function saveFormImage(
   let pdf: File | undefined;
   const created: File[] = [];
   try {
-    const html = await recordHtml(record, language, gregorian, correction);
+    const html = await recordHtml(
+      record,
+      language,
+      gregorian,
+      correction,
+      context,
+    );
     const { uri } = await Print.printToFileAsync({ html });
     pdf = new File(uri);
     const privatePdf = new File(folder, "form.pdf");

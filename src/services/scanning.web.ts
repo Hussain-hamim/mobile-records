@@ -20,6 +20,7 @@ export async function cropScan(
   _width: number,
   _height: number,
   _region: MrzRegion,
+  _maxDimension?: number,
 ): Promise<{ uri: string; width: number; height: number }> {
   throw new Error("nativeRequired");
 }

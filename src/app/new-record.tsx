@@ -5,35 +5,37 @@ import { Pressable, View } from "react-native";
 import { FingerprintCards } from "../components/fingerprint-cards";
 import { FingerprintPrompt } from "../components/fingerprint-prompt";
 import { PersonFields } from "../components/person-fields";
+import { RecordPhotos } from "../components/record-photos";
+import { recordSectionStyles } from "../components/record-section-styles";
 import { Scanner } from "../components/scanner";
 import {
-    Button,
-    Card,
-    Chip,
-    Disclosure,
-    Field,
-    Heading,
-    Icon,
-    IconButton,
-    Notice,
-    Row,
-    Screen,
-    SectionTitle,
-    Txt,
-    colors,
-    errorText,
+  Button,
+  Card,
+  Chip,
+  Disclosure,
+  Field,
+  Heading,
+  Icon,
+  IconButton,
+  Notice,
+  Row,
+  Screen,
+  SectionTitle,
+  Txt,
+  colors,
+  errorText,
 } from "../components/ui";
 import { fillDemoStep } from "../domain/demo-data";
 import { draftFingerprints, scanTemplates } from "../domain/fingerprints";
 import {
-    emptyPerson,
-    emptyPhone,
-    type Draft,
-    type Phone,
+  emptyPerson,
+  emptyPhone,
+  type Draft,
+  type Phone,
 } from "../domain/models";
 import {
-    applyPhoneSuggestions,
-    resolvePhoneSuggestions,
+  applyPhoneSuggestions,
+  resolvePhoneSuggestions,
 } from "../domain/phone-lookup";
 import { normalizeImei, validateDraft } from "../domain/validation";
 import { lookupTac } from "../services/tac";
@@ -92,6 +94,8 @@ export default function NewRecord() {
   const [error, setError] = useState("");
   const [hint, setHint] = useState("");
   const [busy, setBusy] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const lookupRequest = useRef(0);
   useEffect(
     () => () => {
@@ -194,6 +198,7 @@ export default function NewRecord() {
     patch({ step: draft.step + 1 });
   }
   async function finish() {
+    if (photoBusy) return;
     setBusy(true);
     setError("");
     const ready = { ...latest.current, customerConfirmed: true };
@@ -227,29 +232,35 @@ export default function NewRecord() {
           />
         }
       />
+      {discarding ? <Card>
+        <Notice message={t("discardDraftHint")} />
+        <Button label={t("discardDraft")} disabled={busy || photoBusy} onPress={() => {
+          completed.current = true; setBusy(true);
+          void saveChain.current.catch(() => {}).then(() => app.discardDraft(draft.id)).then(() => router.back()).catch(e => { completed.current = false; setError(errorText(e,t)); }).finally(() => setBusy(false));
+        }} />
+        <Button secondary label={t("cancel")} disabled={busy} onPress={() => setDiscarding(false)} />
+      </Card> : <Button small secondary label={t("discardDraft")} disabled={busy || photoBusy} onPress={() => setDiscarding(true)} />}
       <Row style={{ marginBottom: 24 }}>
-        {(["phoneDetails", "customerDetails"] as const).map(
-          (k, i) => (
-            <View
-              key={k}
-              style={{
-                flex: 1,
-                borderTopWidth: 4,
-                borderRadius: 3,
-                borderColor: draft.step >= i ? colors.green : colors.line,
-                paddingTop: 8,
-              }}
+        {(["phoneDetails", "customerDetails"] as const).map((k, i) => (
+          <View
+            key={k}
+            style={{
+              flex: 1,
+              borderTopWidth: 4,
+              borderRadius: 3,
+              borderColor: draft.step >= i ? colors.green : colors.line,
+              paddingTop: 8,
+            }}
+          >
+            <Txt
+              size={12}
+              bold
+              color={draft.step >= i ? colors.green : colors.muted}
             >
-              <Txt
-                size={12}
-                bold
-                color={draft.step >= i ? colors.green : colors.muted}
-              >
-                {i + 1}. {t(k)}
-              </Txt>
-            </View>
-          ),
-        )}
+              {i + 1}. {t(k)}
+            </Txt>
+          </View>
+        ))}
       </Row>
       <Notice message={error} tone="error" />
       <Notice message={hint} />
@@ -282,7 +293,7 @@ export default function NewRecord() {
               onPress={() => patch({ direction: "sell" })}
             />
           </Row>
-          <Card>
+          <Card style={recordSectionStyles.imei}>
             <SectionTitle
               title={t("scanImei")}
               hint={t("scanIntro")}
@@ -317,6 +328,8 @@ export default function NewRecord() {
               onChangeText={(v) => phone("imei1", v)}
               numeric
               keyboardType="numeric"
+              maxLength={15}
+              complete={normalizeImei(draft.phone.imei1).length === 15}
             />
             {secondImeiVisible ? (
               <Field
@@ -325,6 +338,8 @@ export default function NewRecord() {
                 onChangeText={(v) => phone("imei2", v)}
                 numeric
                 keyboardType="numeric"
+                maxLength={15}
+                complete={normalizeImei(draft.phone.imei2).length === 15}
               />
             ) : (
               <View style={{ marginBottom: 16 }}>
@@ -352,7 +367,7 @@ export default function NewRecord() {
               </View>
             ) : null}
           </Card>
-          <Card>
+          <Card style={recordSectionStyles.phone}>
             <SectionTitle title={t("essentials")} icon="cellphone" />
             <Row style={{ alignItems: "flex-start" }}>
               {(["brand", "model"] as const).map((k) => (
@@ -401,28 +416,12 @@ export default function NewRecord() {
       ) : null}
       {draft.step === 1 ? (
         <>
-          <Row style={{ marginBottom: 16 }}>
+          <Row style={{ marginBottom: 10 }}>
             <View style={{ flex: 1 }}>
               <Button
+                small
                 secondary
-                icon="card-account-details-outline"
-                label={t("scanId")}
-                onPress={() => setScanner("id")}
-              />
-            </View>
-          </Row>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 10,
-              marginBottom: 16,
-            }}
-          >
-            <View style={{ flex: 1 }}>
-              <Button
-                secondary
-                label={t("chooseCustomer")}
+                label={t("findCustomerCompact")}
                 onPress={() => setChoosing((open) => !open)}
               />
             </View>
@@ -431,7 +430,14 @@ export default function NewRecord() {
               label={t("fpReturning")}
               onPress={() => setFingerFind(true)}
             />
-          </View>
+          </Row>
+          <RecordPhotos
+            tileStyle={recordSectionStyles.photos}
+            recordId={draft.id}
+            direction={draft.direction}
+            editable
+            onBusyChange={setPhotoBusy}
+          />
           {choosing ? (
             <Card>
               {app.customers.map((c) => (
@@ -467,8 +473,21 @@ export default function NewRecord() {
             />
           ) : null}
           <View style={{ height: 16 }} />
-          <Card>
-            <SectionTitle title={t("customerDetails")} icon="account-outline" />
+          <Card style={recordSectionStyles.customer}>
+            <Row style={{ marginBottom: 18 }}>
+              <View style={{ flex: 1 }}>
+                <Txt bold size={17}>
+                  {t("customerDetails")}
+                </Txt>
+              </View>
+              <Button
+                small
+                secondary
+                icon="card-account-details-outline"
+                label={t("scanIdCompact")}
+                onPress={() => setScanner("id")}
+              />
+            </Row>
             <PersonFields
               value={draft.customer}
               onChange={(customer) => patch({ customer })}
@@ -479,6 +498,7 @@ export default function NewRecord() {
               {t("fingerprintOptional")}
             </Txt>
             <FingerprintCards
+              cardStyle={recordSectionStyles.fingerprint}
               entries={fingers}
               customerId={draft.customerId || draft.id}
               manageStored={false}
@@ -548,7 +568,7 @@ export default function NewRecord() {
           }}
           onPerson={(person) =>
             patch({
-              customer: { ...draft.customer, ...person },
+              customer: { ...draft.customer, ...person, idType: "enid" },
               customerConfirmed: true,
             })
           }

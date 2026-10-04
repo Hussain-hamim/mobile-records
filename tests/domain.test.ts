@@ -4,21 +4,21 @@ import { test } from "node:test";
 import { Repository, synchronize } from "../src/data/repository";
 import { memoryVault } from "../src/data/vault.web";
 import {
-  emptyPerson,
-  emptyPhone,
-  emptyShop,
-  type Draft,
-  type Membership,
+    emptyPerson,
+    emptyPhone,
+    emptyShop,
+    type Draft,
+    type Membership,
 } from "../src/domain/models";
 import { formHtml } from "../src/domain/print-template";
 import {
-  digits,
-  extractImeis,
-  latestRecordForCustomer,
-  normalizePhone,
-  parties,
-  validateDraft,
-  validImei,
+    digits,
+    extractImeis,
+    latestRecordForCustomer,
+    normalizePhone,
+    parties,
+    validateDraft,
+    validImei,
 } from "../src/domain/validation";
 const member = (): Membership => ({
   shopId: randomUUID(),
@@ -36,7 +36,7 @@ const draft = (): Draft => ({
   id: randomUUID(),
   direction: "buy",
   phone: { ...emptyPhone(), model: "Test", imei1: "490154203237518" },
-  customer: { ...emptyPerson(), name: "Customer", idNumber: "123" },
+  customer: { ...emptyPerson(), name: "Customer", idNumber: "1234-1234-12345" },
   customerId: "",
   customerConfirmed: true,
   fingerprintTemplate: "dGVzdC10ZW1wbGF0ZQ==",
@@ -44,11 +44,12 @@ const draft = (): Draft => ({
   createdAt: new Date().toISOString(),
   step: 2,
 });
-test("IMEI normalization, checksums, candidate extraction and international phones", () => {
+test("IMEI normalization, full length, candidate extraction and international phones", () => {
   assert.equal(digits("۱۲۳٤٥٦"), "123456");
   assert.ok(validImei("۴۹۰۱۵۴۲۰۳۲۳۷۵۱۸"));
-  assert.ok(!validImei("490154203237519"));
-  assert.ok(!validImei("000000000000000"));
+  assert.ok(validImei("490154203237519"));
+  assert.ok(validImei("000000000000000"));
+  assert.ok(!validImei("49015420323751"));
   assert.deepEqual(
     extractImeis("IMEI: 490154203237518\nSN: 123\n490154203237518"),
     ["490154203237518"],

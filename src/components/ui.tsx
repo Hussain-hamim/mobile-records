@@ -9,6 +9,8 @@ import {
 } from "react";
 import {
     ActivityIndicator,
+    Keyboard,
+    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -122,28 +124,59 @@ export function Screen({
   children,
   scroll = true,
   resetKey,
+  keepBottomVisible = false,
+  style,
 }: {
   children: ReactNode;
   scroll?: boolean;
   resetKey?: string | number;
+  keepBottomVisible?: boolean;
+  style?: ViewStyle;
 }) {
   const scrollRef = useRef<ScrollView>(null);
+  const [keyboard, setKeyboard] = useState(0);
   useEffect(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [resetKey]);
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const show = Keyboard.addListener(showEvent, (event) => {
+      setKeyboard(event.endCoordinates.height);
+    });
+    const hide = Keyboard.addListener(hideEvent, () => setKeyboard(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  useEffect(() => {
+    if (!keepBottomVisible || keyboard === 0) return;
+    const timer = setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [keepBottomVisible, keyboard]);
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
       {scroll ? (
         <ScrollView
           ref={scrollRef}
           keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            style,
+            Platform.OS === "android" && keyboard > 0
+              ? { paddingBottom: 32 + keyboard }
+              : null,
+          ]}
         >
           {children}
         </ScrollView>
       ) : (
-        <View style={[styles.content, { flex: 1 }]}>{children}</View>
+        <View style={[styles.content, { flex: 1 }, style]}>{children}</View>
       )}
     </SafeAreaView>
   );
@@ -243,8 +276,9 @@ export function Field({
   onChangeText,
   numeric = false,
   multiline = false,
+  complete = false,
   ...rest
-}: TextInputProps & { label: string; numeric?: boolean }) {
+}: TextInputProps & { label: string; numeric?: boolean; complete?: boolean }) {
   const { rtl, language } = useApp();
   const [focused, setFocused] = useState(false);
   return (
@@ -252,32 +286,54 @@ export function Field({
       <Txt size={13} bold>
         {label}
       </Txt>
-      <TextInput
-        accessibilityLabel={label}
-        value={value == null || rest.secureTextEntry ? value : digits(value)}
-        onChangeText={
-          onChangeText
-            ? (text) => onChangeText(rest.secureTextEntry ? text : digits(text))
-            : undefined
-        }
-        multiline={multiline}
-        placeholderTextColor="#969AAF"
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        style={[
-          styles.input,
-          {
-            fontFamily: numeric ? undefined : scriptFont(language),
-            fontWeight: language === "ps" && !numeric ? "normal" : undefined,
-            borderColor: focused ? colors.green : colors.line,
-            backgroundColor: focused ? colors.paper : "#F8F9FD",
-            textAlign: numeric ? "left" : rtl ? "right" : "left",
-            writingDirection: numeric ? "ltr" : rtl ? "rtl" : "ltr",
-            minHeight: multiline ? 88 : 51,
-          },
-        ]}
-        {...rest}
-      />
+      <View>
+        <TextInput
+          accessibilityLabel={label}
+          value={value == null || rest.secureTextEntry ? value : digits(value)}
+          onChangeText={
+            onChangeText
+              ? (text) =>
+                  onChangeText(rest.secureTextEntry ? text : digits(text))
+              : undefined
+          }
+          multiline={multiline}
+          placeholderTextColor="#969AAF"
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={[
+            styles.input,
+            {
+              fontFamily: numeric ? undefined : scriptFont(language),
+              fontWeight: language === "ps" && !numeric ? "normal" : undefined,
+              borderColor: complete
+                ? colors.success
+                : focused
+                  ? colors.green
+                  : colors.line,
+              backgroundColor: focused ? colors.paper : "#F8F9FD",
+              textAlign: numeric ? "left" : rtl ? "right" : "left",
+              writingDirection: numeric ? "ltr" : rtl ? "rtl" : "ltr",
+              minHeight: multiline ? 88 : 51,
+              paddingEnd: complete ? 42 : undefined,
+            },
+          ]}
+          {...rest}
+        />
+        {complete ? (
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              end: 12,
+              top: 0,
+              bottom: 0,
+              justifyContent: "center",
+            }}
+          >
+            <Icon name="check-circle" size={22} color={colors.success} />
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -537,7 +593,7 @@ export function SearchField({
 export function errorText(error: unknown, t: (k: TextKey) => string) {
   const message = error instanceof Error ? error.message : String(error);
   try {
-    return t(message as TextKey);
+    return t((message.includes("conflict") ? "conflict" : message) as TextKey);
   } catch {
     return message;
   }

@@ -27,6 +27,10 @@ import {
   colors,
   errorText,
 } from "./ui";
+import {
+  playFingerprintSound,
+  stopFingerprintSound,
+} from "../services/enrollment-sound";
 import type { TextKey } from "../i18n/strings";
 
 const stateKeys: Record<string, TextKey> = {
@@ -79,12 +83,28 @@ export function FingerprintPrompt({
     let alive = true,
       delivered = false;
     let release: (() => Promise<void>) | undefined;
+    let lastRejection = -Infinity;
+    let lastStatus = "connecting";
+    function rejectSound() {
+      if (!alive || delivered || latest.current.mode === "check") return;
+      const now = Date.now();
+      if (now - lastRejection < 1500) return;
+      lastRejection = now;
+      void playFingerprintSound("rejected");
+    }
+    stopFingerprintSound();
     const subscriptions = [
       onCaptureProgress((n) => {
         if (alive) setStep(n);
       }),
       onReaderStatus((s) => {
         if (!alive) return;
+        if (
+          s !== lastStatus &&
+          ["mismatch", "verificationMismatch", "reposition"].includes(s)
+        )
+          rejectSound();
+        lastStatus = s;
         readerState.current = s;
         setStatus(s);
         if (s === "removed") {
@@ -109,7 +129,10 @@ export function FingerprintPrompt({
       try {
         await closing.current;
         if (!alive || phase !== "ready") return;
-        if (latest.current.mode === "identify" && !latest.current.templates.length) {
+        if (
+          latest.current.mode === "identify" &&
+          !latest.current.templates.length
+        ) {
           setNoEnrollments(true);
           throw new Error("fpNoEnrolled");
         }
@@ -135,10 +158,26 @@ export function FingerprintPrompt({
           if (!hit?.customerId) throw new Error("fingerprintNoMatch");
           delivered = true;
           await release();
-          if (alive) latest.current.onIdentified?.(hit.customerId);
+          if (alive) {
+            void playFingerprintSound("matched");
+            latest.current.onIdentified?.(hit.customerId);
+          }
         }
       } catch (reason) {
         if (!alive) return;
+        const message =
+          reason instanceof Error ? reason.message : String(reason);
+        if (
+          [
+            "fingerprintNoMatch",
+            "fingerprintMismatch",
+            "fingerprintAmbiguous",
+            "fingerprintExists",
+            "fingerprintFailed",
+            "fingerprintTimeout",
+          ].some((key) => message.includes(key))
+        )
+          rejectSound();
         const connection = await getReaderUsbStatus();
         if (release) await release();
         if (!alive) return;
@@ -148,6 +187,9 @@ export function FingerprintPrompt({
     })();
     return () => {
       alive = false;
+      // Completed feedback can finish while the profile opens or the modal closes.
+      // Cancellation/retry stops pending imports and any rejection sound.
+      if (!delivered) stopFingerprintSound();
       background.remove();
       subscriptions.forEach((s) => s?.remove());
       if (release) closing.current = release();

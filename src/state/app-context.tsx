@@ -2,37 +2,39 @@ import * as Crypto from "expo-crypto";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as Network from "expo-network";
 import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useRef,
+    useState,
+    type ReactNode,
 } from "react";
 import { AppState, Platform } from "react-native";
 import { backend } from "../data/backend";
+import { cloudVault } from "../data/cloud-vault";
 import { demoMembership, ensureDemoData } from "../data/demo";
 import { redeemLoginCode } from "../data/login-code";
+import { memoryVault } from "../data/memory-vault";
 import { Repository, synchronize } from "../data/repository";
 import { secureStorage } from "../data/secure";
 import { transportFor } from "../data/transport";
-import { memoryVault } from "../data/memory-vault";
-import { cloudVault } from "../data/cloud-vault";
 import {
-  emptyShop,
-  type Amendment,
-  type Customer,
-  type Draft,
-  type FingerprintEntry,
-  type Language,
-  type Membership,
-  type Operation,
-  type ShopProfile,
-  type Transaction,
+    emptyShop,
+    type Amendment,
+    type Customer,
+    type Draft,
+    type FingerprintEntry,
+    type Language,
+    type Membership,
+    type Operation,
+    type Person,
+    type ShopProfile,
+    type Transaction,
 } from "../domain/models";
 import { normalizePhone } from "../domain/validation";
 import { translate, type TextKey } from "../i18n/strings";
+import { discardDraftPhotos } from "../services/local-photos";
 import { cleanupScans } from "../services/scanning";
 
 import { customerFromRow } from "../domain/fingerprints";
@@ -222,6 +224,7 @@ function useController() {
         setGregorianState(!!p.gregorian);
       }
       if (
+        __DEV__ &&
         Platform.OS === "android" &&
         (await secureStorage.getItem("local-demo-active")) === "true"
       ) {
@@ -229,14 +232,14 @@ function useController() {
         return;
       }
       const cached = await secureStorage.getItem("active-shop");
-      if (cached && backend && Platform.OS === "android") {
+      if (cached && backend) {
         await activate(JSON.parse(cached) as Membership);
         void sync();
         return;
       }
       // Code redemption may have succeeded before local database setup failed.
       // Resume that session; fetchMembership revalidates the user and access.
-      if (backend && Platform.OS === "android") {
+      if (backend) {
         const { data } = await backend.auth.getSession();
         if (data.session) {
           await fetchMembership();
@@ -263,7 +266,7 @@ function useController() {
     };
   }, [phase, demo, sync]);
   async function signIn(phone: string, code: string) {
-    if (!backend || Platform.OS !== "android") throw new Error("setup");
+    if (!backend) throw new Error("setup");
     if (
       (await LocalAuthentication.getEnrolledLevelAsync()) ===
       LocalAuthentication.SecurityLevel.NONE
@@ -286,6 +289,7 @@ function useController() {
     await fetchMembership();
   }
   async function enterDemo() {
+    if (!__DEV__) return;
     await activate(demoMembership(), true);
   }
   async function signOut() {
@@ -316,6 +320,12 @@ function useController() {
     await repository.current.saveDraft(d);
     setDrafts((current) => [...current.filter((item) => item.id !== d.id), d]);
   }
+  async function discardDraft(id: string) {
+    const repo = repository.current!;
+    await repo.discardDraft(id);
+    await discardDraftPhotos({ shopId: repo.membership.shopId, userId: repo.membership.userId, recordId: id }).catch(() => setNotice("photoRemoveFailed"));
+    setDrafts(current => current.filter(d => d.id !== id));
+  }
   async function finalize(d: Draft) {
     const record = await repository.current!.finalize(d);
     setRecords((current) => [record, ...current.filter((r) => r.id !== record.id)]);
@@ -341,8 +351,12 @@ function useController() {
     await repository.current!.saveProfile(p);
     await refresh().catch(() => setNotice("cloudRefreshFailed"));
   }
-  async function amend(r: Transaction, reason: string) {
-    await repository.current!.amend(r, reason);
+  async function saveCustomer(id: string, person: Person, reason: string, version: number, expectedPerson: Person) {
+    await repository.current!.saveCustomer(id, person, reason, version, expectedPerson);
+    await refresh().catch(() => setNotice("cloudRefreshFailed"));
+  }
+  async function amend(r: Transaction, reason: string, previousId?: string | null, kind: Amendment["kind"] = "correction", photoChange?: Amendment["photoChange"]) {
+    await repository.current!.amend(r, reason, previousId, kind, photoChange);
     await refresh().catch(() => setNotice("cloudRefreshFailed"));
   }
   async function resolve(op: Operation, keep: boolean) {
@@ -410,9 +424,11 @@ function useController() {
     signOut,
     sync,
     saveDraft,
+    discardDraft,
     finalize,
     saveProfile,
     saveFingerprints,
+    saveCustomer,
     amend,
     resolve,
     preferences,

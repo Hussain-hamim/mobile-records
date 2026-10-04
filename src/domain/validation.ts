@@ -1,23 +1,33 @@
-import type { Draft, Transaction } from "./models";
+import type { Draft, Transaction, TazkiraType } from "./models";
 export function digits(value: string): string {
   return value.replace(/[۰-۹٠-٩]/g, (c) =>
     String(c.charCodeAt(0) - (c >= "۰" ? 1776 : 1632)),
+  );
+}
+export function formatTazkiraNumber(value: string, type: TazkiraType): string {
+  const number = digits(value).replace(/\D/g, "");
+  if (type === "pnid") return number;
+  // Keep excess digits visible so switching from PNID never silently loses data.
+  return [number.slice(0, 4), number.slice(4, 8), number.slice(8)]
+    .filter(Boolean)
+    .join("-");
+}
+export function validTazkiraNumber(value: string, type: TazkiraType): boolean {
+  return type === "enid"
+    ? /^(?:\d{13}|\d{4}-\d{4}-\d{5})$/.test(digits(value))
+    : /^\d+$/.test(digits(value));
+}
+export function matchesTazkiraNumber(value: string, query: string): boolean {
+  const needle = digits(query).replace(/[\s-]/g, "");
+  return (
+    /^\d+$/.test(needle) && digits(value).replace(/[\s-]/g, "").includes(needle)
   );
 }
 export function normalizeImei(value: string) {
   return digits(value).replace(/[\s-]/g, "");
 }
 export function validImei(value: string): boolean {
-  const n = normalizeImei(value);
-  if (!/^\d{15}$/.test(n) || /^(\d)\1{14}$/.test(n)) return false;
-  return (
-    [...n].reduce((sum, c, i) => {
-      const x = Number(c) * (i % 2 ? 2 : 1);
-      return sum + (x > 9 ? x - 9 : x);
-    }, 0) %
-      10 ===
-    0
-  );
+  return /^\d{15}$/.test(normalizeImei(value));
 }
 export function extractImeis(text: string): string[] {
   return [
@@ -51,6 +61,14 @@ export function validateDraft(draft: Draft): string[] {
   )
     errors.push("requiredFields");
   if (
+    draft.customer.idType &&
+    draft.customer.idNumber.trim() &&
+    !validTazkiraNumber(draft.customer.idNumber, draft.customer.idType)
+  )
+    errors.push(
+      draft.customer.idType === "enid" ? "invalidEnid" : "invalidPnid",
+    );
+  if (
     !/^\d{1,10}(\.\d{1,2})?$/.test(digits(draft.price)) ||
     Number(digits(draft.price)) <= 0
   )
@@ -67,16 +85,19 @@ export function latestRecordForCustomer(
 }
 export function matchesRecord(record: Transaction, query: string): boolean {
   const needle = digits(query).trim().toLocaleLowerCase();
-  return [
-    record.reference,
-    record.customer.name,
-    record.customer.phone,
-    record.customer.idNumber,
-    record.phone.imei1,
-    record.phone.imei2,
-    record.phone.brand,
-    record.phone.model,
-  ].some((v) => digits(v).toLocaleLowerCase().includes(needle));
+  return (
+    matchesTazkiraNumber(record.customer.idNumber, query) ||
+    [
+      record.reference,
+      record.customer.name,
+      record.customer.phone,
+      record.customer.idNumber,
+      record.phone.imei1,
+      record.phone.imei2,
+      record.phone.brand,
+      record.phone.model,
+    ].some((v) => digits(v).toLocaleLowerCase().includes(needle))
+  );
 }
 export function parties(record: Transaction) {
   return record.direction === "buy"

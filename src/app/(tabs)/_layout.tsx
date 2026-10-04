@@ -129,7 +129,6 @@ export default function Layout() {
 const styles = StyleSheet.create({
   dock: {
     alignSelf: "center",
-    marginTop: 8,
     paddingTop: 8,
     paddingBottom: 7,
     paddingHorizontal: 6,

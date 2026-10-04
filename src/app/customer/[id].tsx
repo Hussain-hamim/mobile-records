@@ -1,3 +1,4 @@
+import { CustomerEditor } from "../../components/customer-editor";
 import { router, useLocalSearchParams } from "expo-router";
 import { useApp } from "../../state/app-context";
 import { fingerprintsOf } from "../../domain/fingerprints";
@@ -16,7 +17,7 @@ import {
 import { FingerprintCards } from "../../components/fingerprint-cards";
 import { RecordRow } from "../../components/record-row";
 import { View } from "react-native";
-import { formatDate } from "../../domain/format";
+import { formatAuditDate } from "../../domain/format";
 export default function CustomerProfile() {
   const app = useApp(),
     { t } = app;
@@ -79,11 +80,37 @@ export default function CustomerProfile() {
                 <Txt muted size={12}>
                   {t(key as keyof typeof customer.person)}
                 </Txt>
-                <Txt>{value}</Txt>
+                <Txt>
+                  {key === "idType"
+                    ? t(value === "pnid" ? "pnid" : "enid")
+                    : value}
+                </Txt>
               </View>
             ))}
         </Disclosure>
       </Card>
+      <CustomerEditor customer={customer} />
+      {customer.profileAudit?.length ? (
+        <Card>
+          <Disclosure title={t("auditHistory")} icon="history">
+            {customer.profileAudit.map((event, index) => (
+              <View key={index} style={{ marginBottom: 16 }}>
+                <Txt bold>{event.reason}</Txt>
+                <Txt muted size={12}>
+                  {formatAuditDate(event.at, app.language, app.gregorian)} ·{" "}
+                  {t("changedBy")}: {event.by}
+                </Txt>
+                {Object.entries(event.changes).map(([key, change]) => (
+                  <Txt key={key} size={13}>
+                    {t(key as keyof typeof customer.person)}:{" "}
+                    {change.before || "—"} → {change.after || "—"}
+                  </Txt>
+                ))}
+              </View>
+            ))}
+          </Disclosure>
+        </Card>
+      ) : null}
       <FingerprintCards
         entries={fingerprintsOf(customer)}
         customerId={id}
@@ -107,7 +134,8 @@ export default function CustomerProfile() {
                   )}
                 </Txt>
                 <Txt muted size={12}>
-                  {formatDate(event.at, app.language, app.gregorian)}
+                  {formatAuditDate(event.at, app.language, app.gregorian)} ·{" "}
+                  {t("changedBy")}: {event.by}
                 </Txt>
                 {event.reason ? <Txt size={12}>{event.reason}</Txt> : null}
               </View>

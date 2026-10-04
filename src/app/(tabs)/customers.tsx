@@ -1,27 +1,41 @@
-import { FingerprintSearch } from "../../components/fingerprint-search";
-import { useState } from "react";
-import { digits } from "../../domain/validation";
-import { FlatList, View } from "react-native";
 import { router } from "expo-router";
-import { useApp } from "../../state/app-context";
+import { useMemo, useState } from "react";
+import { FlatList, View } from "react-native";
+import { FingerprintSearch } from "../../components/fingerprint-search";
 import {
-  IconButton,
   Button,
   Card,
   Empty,
-  SearchField,
   Heading,
+  IconButton,
   Row,
   Screen,
+  SearchField,
   Txt,
   colors,
 } from "../../components/ui";
+import { digits, matchesTazkiraNumber } from "../../domain/validation";
+import { useApp } from "../../state/app-context";
+import { usePage } from "../../state/use-page";
+
 export default function Customers() {
   const { customers, t } = useApp();
   const [query, setQuery] = useState("");
   const q = digits(query).trim().toLocaleLowerCase();
+  const filtered = useMemo(
+    () =>
+      customers.filter(
+        (c) =>
+          matchesTazkiraNumber(c.person.idNumber, q) ||
+          [c.person.name, c.person.phone, c.person.idNumber].some((s) =>
+            digits(s).toLocaleLowerCase().includes(q),
+          ),
+      ),
+    [customers, q],
+  );
+  const page = usePage(filtered, q);
   return (
-    <Screen scroll={false}>
+    <Screen scroll={false} style={{ paddingBottom: 0 }}>
       <Heading title={t("customers")} subtitle={t("savedCustomers")} />
       <SearchField
         placeholder={t("search")}
@@ -30,50 +44,57 @@ export default function Customers() {
       />
       <FingerprintSearch onManual={() => {}} />
       <Txt size={12} muted style={{ marginBottom: 16 }}>
-        {customers.length} {t("customers")}
+        {page.items.length === filtered.length
+          ? `${filtered.length} ${t("customers")}`
+          : `${page.items.length} / ${filtered.length} ${t("customers")}`}
       </Txt>
       <FlatList
-        data={customers.filter((c) =>
-          [c.person.name, c.person.phone, c.person.idNumber].some((s) =>
-            digits(s).toLocaleLowerCase().includes(q),
-          ),
-        )}
+        data={page.items}
         keyExtractor={(c) => c.id}
         renderItem={({ item }) => (
           <Card>
-            <Row>
+            <Row style={{ alignItems: "flex-start" }}>
               <View
                 style={{
+                  width: 46,
+                  height: 46,
+                  borderRadius: 16,
                   backgroundColor: colors.mint,
-                  padding: 12,
-                  borderRadius: 18,
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
                 <Txt bold color={colors.green} size={20}>
                   {item.person.name.slice(0, 1)}
                 </Txt>
               </View>
-              <View style={{ flex: 1 }}>
-                <Txt bold>{item.person.name}</Txt>
-                <Txt muted size={12}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Txt bold size={16}>
+                  {item.person.name}
+                </Txt>
+                <Txt muted size={12} style={{ marginTop: 3 }}>
                   {item.person.phone}
                 </Txt>
-                <Txt muted size={11}>
+                <Txt muted size={11} style={{ marginTop: 2 }}>
                   {item.person.idNumber}
                 </Txt>
               </View>
-              <Button
-                small
-                secondary
-                icon="account-outline"
-                label={t("viewCustomer")}
-                onPress={() =>
-                  router.push({
-                    pathname: "/customer/[id]",
-                    params: { id: item.id },
-                  })
-                }
-              />
+            </Row>
+            <Row style={{ marginTop: 14, gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <Button
+                  small
+                  secondary
+                  icon="account-outline"
+                  label={t("viewCustomer")}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/customer/[id]",
+                      params: { id: item.id },
+                    })
+                  }
+                />
+              </View>
               <IconButton
                 icon="plus"
                 label={t("newRecord")}
@@ -89,6 +110,23 @@ export default function Customers() {
         )}
         ListEmptyComponent={
           <Empty title={t("customers")} hint={t("emptyHint")} />
+        }
+        onEndReached={page.hasMore ? page.loadMore : undefined}
+        onEndReachedThreshold={0.4}
+        initialNumToRender={12}
+        maxToRenderPerBatch={8}
+        windowSize={7}
+        ListFooterComponent={
+          page.hasMore ? (
+            <View style={{ paddingVertical: 14 }}>
+              <Button
+                small
+                secondary
+                label={t("loadMore")}
+                onPress={page.loadMore}
+              />
+            </View>
+          ) : null
         }
       />
     </Screen>
