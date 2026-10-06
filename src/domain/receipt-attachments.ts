@@ -5,6 +5,8 @@ export type ReceiptContext = {
   shopId: string;
   userId: string;
   fingerprintEnrolled?: boolean;
+  /** Explicit access to the preserved draft-v1 layout for historical exports. */
+  originalLayout?: boolean;
 };
 
 export type ReceiptAttachments = {

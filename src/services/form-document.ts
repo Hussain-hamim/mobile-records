@@ -6,7 +6,7 @@ import type { ReceiptContext } from "../domain/receipt-attachments";
 import { Asset } from "expo-asset";
 import { File } from "expo-file-system";
 import type { Language, Transaction } from "../domain/models";
-import { formHtml } from "../domain/print-template";
+import { exportFormHtml, exportLanguage } from "../domain/form-export";
 
 export async function recordHtml(
   record: Transaction,
@@ -15,14 +15,15 @@ export async function recordHtml(
   correction?: string,
   context?: ReceiptContext,
 ) {
+  const printLanguage = exportLanguage(language, context?.originalLayout);
   const font = await Asset.fromModule(
-    language === "ps"
+    printLanguage === "ps"
       ? require("../../assets/fonts/BahijBaraem-Regular.ttf")
       : require("../../assets/fonts/NotoSansArabic.ttf"),
   ).downloadAsync();
-  return formHtml(
+  return exportFormHtml(
     record,
-    language,
+    printLanguage,
     await new File(font.localUri!).base64(),
     gregorian,
     correction,
@@ -40,5 +41,6 @@ export async function recordHtml(
           receiptPhoto,
         )
       : undefined,
+    context?.originalLayout,
   );
 }

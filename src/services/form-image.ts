@@ -44,7 +44,11 @@ export async function saveFormImage(
       correction,
       context,
     );
-    const { uri } = await Print.printToFileAsync({ html });
+    const { uri } = await Print.printToFileAsync({
+      html,
+      width: 595.28,
+      height: 841.89,
+    });
     pdf = new File(uri);
     const privatePdf = new File(folder, "form.pdf");
     await pdf.move(privatePdf);

@@ -46,6 +46,7 @@ export default function RecordDetail() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [picture, setPicture] = useState<FormPicture | null>(null);
+  const [originalLayout, setOriginalLayout] = useState(false);
   async function run(fn: () => Promise<void>) {
     setBusy(true);
     setError("");
@@ -70,6 +71,7 @@ export default function RecordDetail() {
     return {
       shopId: app.membership.shopId,
       userId: app.membership.userId,
+      originalLayout,
       fingerprintEnrolled: customer
         ? fingerprintsOf(customer).length > 0
         : undefined,
@@ -106,7 +108,7 @@ export default function RecordDetail() {
       <FormPicturePreview picture={picture} onClose={() => setPicture(null)} />
       <Notice message={error} tone="error" />
       <Notice message={message} />
-      <Notice message={t("draftForm")} />
+      {originalLayout ? <Notice message={t("draftForm")} /> : null}
       {voided ? <Notice message={t("recordVoided")} tone="error" /> : null}
       <Txt muted size={12}>
         {t("originalRecord")}
@@ -186,6 +188,18 @@ export default function RecordDetail() {
             </View>
           ))}
       </Card>
+      <Row style={{ flexWrap: "wrap", marginBottom: 12 }}>
+        <Chip
+          label={t("pashtoForm")}
+          active={!originalLayout}
+          onPress={() => setOriginalLayout(false)}
+        />
+        <Chip
+          label={t("originalFormLayout")}
+          active={originalLayout}
+          onPress={() => setOriginalLayout(true)}
+        />
+      </Row>
       <Row>
         <View style={{ flex: 1 }}>
           <Button

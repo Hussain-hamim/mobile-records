@@ -20,10 +20,14 @@ export async function printRecord(
     context,
   );
   if (!share) {
-    await Print.printAsync({ html });
+    await Print.printAsync({ html, width: 595.28, height: 841.89 });
     return;
   }
-  const { uri } = await Print.printToFileAsync({ html });
+  const { uri } = await Print.printToFileAsync({
+    html,
+    width: 595.28,
+    height: 841.89,
+  });
   try {
     await Sharing.shareAsync(uri, {
       mimeType: "application/pdf",

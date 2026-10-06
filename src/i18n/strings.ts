@@ -1,7 +1,11 @@
 import type { Language } from "../domain/models";
 import { digits } from "../domain/validation";
 const copy = {
-  photosStorageTitle: ["Photos & storage", "عکسونه او ساتنه", "عکس‌ها و ذخیره‌سازی"],
+  photosStorageTitle: [
+    "Photos & storage",
+    "عکسونه او ساتنه",
+    "عکس‌ها و ذخیره‌سازی",
+  ],
   photosStorageHint: [
     "Manage local photos, online storage, and uploads.",
     "ځايي عکسونه، آنلاین ساتنه او د عکسونو لېږد تنظیم کړئ.",
@@ -1061,6 +1065,12 @@ const copy = {
     "قیمت مثبت و درست وارد کنید.",
   ],
   print: ["Print form", "فورمه چاپ کړئ", "چاپ فورم"],
+  pashtoForm: ["Pashto form", "پښتو فورمه", "فورم پشتو"],
+  originalFormLayout: [
+    "Original draft layout",
+    "د مسودې پخوانۍ بڼه",
+    "طرح پیش‌نویس قبلی",
+  ],
   share: ["Share PDF", "PDF شریک کړئ", "اشتراک PDF"],
   draftForm: [
     "DRAFT FORM · Official template awaiting verification",

@@ -3,7 +3,7 @@ import { loadReceiptAttachments } from "../domain/receipt-attachments";
 import type { ReceiptContext } from "../domain/receipt-attachments";
 import { Asset } from "expo-asset";
 import type { Language, Transaction } from "../domain/models";
-import { formHtml } from "../domain/print-template";
+import { exportFormHtml, exportLanguage } from "../domain/form-export";
 
 export async function recordHtml(
   record: Transaction,
@@ -12,8 +12,9 @@ export async function recordHtml(
   correction?: string,
   context?: ReceiptContext,
 ) {
+  const printLanguage = exportLanguage(language, context?.originalLayout);
   const font = Asset.fromModule(
-    language === "ps"
+    printLanguage === "ps"
       ? require("../../assets/fonts/BahijBaraem-Regular.ttf")
       : require("../../assets/fonts/NotoSansArabic.ttf"),
   );
@@ -34,5 +35,13 @@ export async function recordHtml(
         async (uri) => uri,
       )
     : undefined;
-  return formHtml(record, language, base64, gregorian, correction, attachments);
+  return exportFormHtml(
+    record,
+    printLanguage,
+    base64,
+    gregorian,
+    correction,
+    attachments,
+    context?.originalLayout,
+  );
 }
