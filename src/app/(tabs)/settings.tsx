@@ -1,5 +1,6 @@
 import { FingerprintPrompt } from "../../components/fingerprint-prompt";
 import { useState } from "react";
+import { router } from "expo-router";
 import { Switch, View } from "react-native";
 import { useApp } from "../../state/app-context";
 import { backend } from "../../data/backend";
@@ -22,7 +23,6 @@ import {
   errorText,
 } from "../../components/ui";
 import { PersonFields } from "../../components/person-fields";
-import { PhotoFolderSettings } from "../../components/record-photos";
 export default function Settings() {
   const app = useApp();
   const { t } = app;
@@ -83,7 +83,14 @@ export default function Settings() {
         </Row>
       </Card>
       <Notice message={message} />
-      <PhotoFolderSettings />
+      <Card>
+        <Button
+          secondary
+          icon="image-multiple-outline"
+          label={t("photosStorageTitle")}
+          onPress={() => router.push("/photos-storage")}
+        />
+      </Card>
       <Card>
         <Button
           secondary
@@ -297,7 +304,13 @@ export default function Settings() {
           </Disclosure>
         </Card>
       ) : null}
-      <Notice message={t("photoPrivacy")} />
+      <Card>
+        <SectionTitle title={t("supportTitle")} icon="help-circle-outline" />
+        <Txt muted size={13} style={{ marginVertical: 12 }}>
+          {t("supportSettingsHint")}
+        </Txt>
+        <Button secondary icon="message-text-outline" label={t("supportContact")} onPress={() => router.push("/support")} />
+      </Card>
       <Button
         label={t("signOut")}
         secondary

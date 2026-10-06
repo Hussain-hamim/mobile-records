@@ -1,3 +1,4 @@
+import { resolvedPhotos } from "./resolved-photos";
 import { loadReceiptAttachments } from "../domain/receipt-attachments";
 import { loadLocalPhotos } from "./local-photos";
 import { receiptPhoto } from "./receipt-photo";
@@ -29,7 +30,13 @@ export async function recordHtml(
       ? await loadReceiptAttachments(
           record,
           context,
-          loadLocalPhotos,
+          async (scope) => {
+            try {
+              return await resolvedPhotos(scope);
+            } catch {
+              return loadLocalPhotos(scope);
+            }
+          },
           receiptPhoto,
         )
       : undefined,

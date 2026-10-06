@@ -1,3 +1,4 @@
+import { resolvedPhotos } from "./resolved-photos";
 import { loadReceiptAttachments } from "../domain/receipt-attachments";
 import type { ReceiptContext } from "../domain/receipt-attachments";
 import { Asset } from "expo-asset";
@@ -29,8 +30,8 @@ export async function recordHtml(
     ? await loadReceiptAttachments(
         record,
         context,
-        async () => ({ photos: {} }),
-        async () => undefined,
+        resolvedPhotos,
+        async (uri) => uri,
       )
     : undefined;
   return formHtml(record, language, base64, gregorian, correction, attachments);

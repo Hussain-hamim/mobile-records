@@ -1,3 +1,5 @@
+import { RecordsPanel } from "./records-panel.web";
+import { PhotoStoragePanel, PhotoRequests } from "./photo-storage-panel.web";
 import {
   useCallback,
   useEffect,
@@ -10,6 +12,7 @@ import { Link } from "expo-router";
 import { adminApi, adminRequest } from "./api";
 import type {
   AdminMember,
+  AdminRecordScope,
   CodeLookup,
   IssuedCode,
   Overview,
@@ -179,6 +182,7 @@ export default function AdminPortal() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [section, setSection] = useState("overview");
+  const [recordScope, setRecordScope] = useState<AdminRecordScope | null>(null);
   const [detail, setDetail] = useState<ShopDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -194,6 +198,7 @@ export default function AdminPortal() {
   const clearData = useCallback(() => {
     listRequest.current++;
     detailRequest.current++;
+    setRecordScope(null);
     setUser(null);
     setOverview(null);
     setShops([]);
@@ -605,6 +610,13 @@ export default function AdminPortal() {
     );
   return (
     <div className="ap-root ap-shell">
+      {recordScope && (
+        <RecordsPanel
+          key={recordScope.shopId + (recordScope.userId ?? "all")}
+          scope={recordScope}
+          onClose={() => setRecordScope(null)}
+        />
+      )}
       <aside className="ap-sidebar">
         <Brand />
         <div className="ap-workspace">
@@ -734,6 +746,9 @@ export default function AdminPortal() {
               </div>
             ))}
           </div>
+          {section !== "activity" && (
+            <PhotoRequests onOpen={(id) => void openShop(id)} />
+          )}
           {section === "activity" ? (
             <section className="ap-panel">
               <div className="ap-panel-heading">
@@ -924,6 +939,10 @@ export default function AdminPortal() {
                         <Icon name="close" size={17} />
                       </button>
                     </div>
+                    <PhotoStoragePanel
+                      key={detail.shop.id}
+                      shopId={detail.shop.id}
+                    />
                     <div className="ap-detail-summary">
                       <span>
                         <Icon name="file" size={17} /> {detail.recordCount}{" "}
@@ -933,6 +952,19 @@ export default function AdminPortal() {
                         {detail.shop.profile.address ||
                           "No shop address added yet."}
                       </p>
+                    </div>
+                    <div className="ap-detail-record-action">
+                      <button
+                        className="ap-secondary ap-full"
+                        onClick={() =>
+                          setRecordScope({
+                            shopId: detail.shop.id,
+                            shopName: detail.shop.profile.shopName || "Shop",
+                          })
+                        }
+                      >
+                        <Icon name="file" size={17} /> All shop records
+                      </button>
                     </div>
                     <div className="ap-accounts">
                       <h3>People & access</h3>
@@ -960,6 +992,20 @@ export default function AdminPortal() {
                             </div>
                           </div>
                           <div className="ap-member-actions">
+                            <button
+                              className="ap-secondary"
+                              onClick={() =>
+                                setRecordScope({
+                                  shopId: detail.shop.id,
+                                  shopName:
+                                    detail.shop.profile.shopName || "Shop",
+                                  userId: member.user_id,
+                                  accountLabel: member.phone || member.user_id,
+                                })
+                              }
+                            >
+                              <Icon name="file" size={15} /> View records
+                            </button>
                             <button
                               className="ap-secondary"
                               disabled={busy || !member.active}

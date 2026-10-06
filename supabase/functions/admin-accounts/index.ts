@@ -1,3 +1,8 @@
+import { readAdminRecords } from "../_shared/admin-records.ts";
+import {
+  assertPhotoStorageConfigured,
+  photoUrl,
+} from "../_shared/r2-photos.ts";
 import {
   adminClient,
   findUserByPhone,
@@ -31,6 +36,44 @@ Deno.serve(async (request) => {
       actorId = user.id;
     }
     const body = await request.json();
+    if (
+      [
+        "photo-admin-status",
+        "photo-admin-set",
+        "photo-admin-requests",
+      ].includes(body.action)
+    ) {
+      if (body.action === "photo-admin-set" && body.enabled === true)
+        assertPhotoStorageConfigured();
+      if (!actorId) return json({ error: "Use an administrator session" }, 403);
+      const result = await admin.rpc("photo_service", {
+        p_actor: actorId,
+        p_action: body.action.slice(6),
+        p: body,
+      });
+      if (result.error)
+        return json(
+          {
+            error: /^(photoQuotaInvalid|changeReasonRequired|noAccess)$/.test(
+              result.error.message,
+            )
+              ? result.error.message
+              : "Photo storage request failed",
+          },
+          400,
+        );
+      return json(result.data);
+    }
+    if (
+      body.action === "list-records" ||
+      body.action === "record-detail" ||
+      body.action === "record-photos"
+    ) {
+      const result = await readAdminRecords(admin, body, (photo) =>
+        photoUrl(photo, "GET"),
+      );
+      return json(result.data, result.status);
+    }
     if (body.action === "overview") {
       const result = await admin.rpc("admin_overview");
       if (result.error) return json({ error: "Could not load overview" }, 500);
@@ -53,7 +96,7 @@ Deno.serve(async (request) => {
       if (search)
         query = query.ilike(
           "profile->>shopName",
-          "%" + search.replace(/[\\%_]/g, (c) => "\\" + c) + "%",
+          "%" + search.replace(/[\\%_]/g, (c: string) => "\\" + c) + "%",
         );
       const result = await query;
       if (result.error) return json({ error: "Could not load shops" }, 500);

@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Image, Linking, Platform, Pressable, Text, View } from "react-native";
 import { backend } from "../data/backend";
+import { company } from "../domain/company";
 import { useApp } from "../state/app-context";
 import {
     Button,
@@ -160,8 +161,8 @@ export function AuthScreen() {
         </Text>
         <Pressable
           accessibilityRole="link"
-          accessibilityLabel="RadefySystems.com"
-          onPress={() => void Linking.openURL("https://radefysystems.com")}
+          accessibilityLabel={company.websiteLabel}
+          onPress={() => void Linking.openURL(company.website)}
         >
           <Text
             style={{
@@ -171,7 +172,7 @@ export function AuthScreen() {
               writingDirection: "ltr",
             }}
           >
-            RadefySystems.com
+            {company.websiteLabel}
           </Text>
         </Pressable>
         <Text
@@ -181,8 +182,8 @@ export function AuthScreen() {
         </Text>
         <Pressable
           accessibilityRole="link"
-          accessibilityLabel="WhatsApp +93 77 170 7272"
-          onPress={() => void Linking.openURL("https://wa.me/93771707272")}
+          accessibilityLabel={`WhatsApp ${company.phoneLabel}`}
+          onPress={() => void Linking.openURL(company.whatsappUrl)}
           style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
         >
           <Icon name="whatsapp" size={16} color="#25D366" />
@@ -194,7 +195,7 @@ export function AuthScreen() {
               writingDirection: "ltr",
             }}
           >
-            +93 77 170 7272
+            {company.phoneLabel}
           </Text>
         </Pressable>
       </View>

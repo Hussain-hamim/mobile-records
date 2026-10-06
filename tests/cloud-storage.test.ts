@@ -7,6 +7,7 @@ import { test } from "node:test";
 import { cloudVault } from "../src/data/cloud-vault";
 import { memoryVault } from "../src/data/memory-vault";
 import { Repository } from "../src/data/repository";
+import { normalizeImei, validImei } from "../src/domain/validation";
 import { emptyPerson, emptyPhone, emptyShop, type Draft, type Membership, type Operation } from "../src/domain/models";
 
 const owner = randomUUID(), staff = randomUUID(), outsider = randomUUID();
@@ -19,7 +20,9 @@ const draft = (direction: "buy" | "sell" = "buy"): Draft => ({
   price: "100", createdAt: new Date().toISOString(), step: 2,
 });
 
-async function setup() {
+const imeiMigration = readFileSync(new URL("../supabase/migrations/20261006082626_align_record_imei_validation.sql", import.meta.url), "utf8");
+
+async function setup(includeImeiMigration = true) {
   const db = new PGlite();
   await db.exec(`create role anon; create role authenticated; create role service_role;
     create schema auth; create table auth.users(id uuid primary key);
@@ -27,6 +30,7 @@ async function setup() {
     grant usage on schema auth to authenticated; grant execute on function auth.uid() to authenticated;`);
   for (const file of ["20261001072643_mobile_records", "20261003120000_fingerprint_templates", "20261003120001_fingerprint_profiles", "20261003111750_hosted_access_hardening", "20261003130510_cloud_record_storage", "20261004112532_audited_record_customer_edits"])
     await db.exec(readFileSync(new URL(`../supabase/migrations/${file}.sql`, import.meta.url), "utf8"));
+  if (includeImeiMigration) await db.exec(imeiMigration);
   await db.exec(`insert into auth.users values('${owner}'),('${staff}'),('${outsider}');
     insert into account_status values('${owner}',false),('${staff}',false),('${outsider}',false);
     insert into shops(id,profile) values('${shop}','{}'),('${otherShop}','{}');
@@ -152,4 +156,72 @@ test("a fresh cloud session reloads records, drafts and both fingerprint slots f
     assert.ok(filters.some((f) => f.table === table && f.column === "shop_id" && f.value === shop));
   assert.ok(filters.some((f) => f.table === "transaction_drafts" && f.column === "user_id" && f.value === owner));
   await repo.vault.close();
+});
+
+test("IMEI migration repairs rejected drafts without dropping snapshot validation", async () => {
+  const db = await setup(false);
+  const save = (ops: Operation[], d: Draft) => db.query("select save_cloud_changes($1,$2,$3)", [shop, JSON.stringify(ops), JSON.stringify([{ id: d.id, value: null }])]);
+  try {
+    const d = draft();
+    d.phone.imei1 = "490154203237519"; // 15 digits accepted by the app, different checksum.
+    const repo = new Repository(memoryVault(), membership, randomUUID);
+    await repo.finalize(d);
+    const ops = await repo.operations();
+    await db.query("select save_cloud_changes($1,'[]',$2)", [shop, JSON.stringify([{ id: d.id, value: d }])]);
+    await assert.rejects(save(ops, d), /valid_snapshot/);
+    assert.equal((await db.query("select * from records")).rows.length, 0);
+    assert.equal((await db.query("select * from transaction_drafts")).rows.length, 1);
+    await db.exec("reset role");
+    await db.exec(imeiMigration);
+    await db.exec("set role authenticated");
+    await save(ops, d);
+    await save(ops, d);
+    assert.equal((await db.query("select * from records")).rows.length, 1);
+    assert.equal((await db.query("select * from transaction_drafts")).rows.length, 0);
+
+    for (const direction of ["buy", "sell"] as const) {
+      const next = draft(direction);
+      next.phone.imei1 = "۴۹۰۱۵۴۲۰۳۲۳۷۵۱۹";
+      next.phone.imei2 = "000000000000000";
+      const nextRepo = new Repository(memoryVault(), membership, randomUUID);
+      await nextRepo.finalize(next);
+      const nextOps = await nextRepo.operations();
+      await save(nextOps, next);
+      const row = (await db.query<{ snapshot: { phone: { imei1: string; imei2: string } } }>("select snapshot from records where id=$1", [next.id])).rows[0];
+      assert.equal(row.snapshot.phone.imei1, "490154203237519");
+      assert.equal(row.snapshot.phone.imei2, "000000000000000");
+    }
+  } finally { await db.close(); }
+});
+
+test("database IMEI policy matches normalized app inputs and retains other snapshot guards", async () => {
+  const db = await setup();
+  try {
+    for (const input of ["490154203237518", "490154203237519", "000000000000000", "۴۹۰۱۵۴۲۰۳۲۳۷۵۱۹", "490 154 203 237 519", "", "49015420323751", "4901542032375190", "49015420323751x"]) {
+      const row = (await db.query<{ valid: boolean }>("select validate_imei($1) as valid", [normalizeImei(input)])).rows[0];
+      assert.equal(row.valid, validImei(input), input);
+    }
+    assert.equal((await db.query<{ valid: boolean }>("select validate_imei(null) as valid")).rows[0].valid, false);
+    const d = draft();
+    d.phone.imei1 = "490154203237519";
+    const repo = new Repository(memoryVault(), membership, randomUUID);
+    const record = await repo.finalize(d);
+    for (const invalid of [
+      { ...record, phone: { ...record.phone, imei1: "123" } },
+      { ...record, phone: { ...record.phone, imei2: record.phone.imei1 } },
+      { ...record, phone: { ...record.phone, imei2: "letters" } },
+      { ...record, phone: { ...record.phone, model: "" } },
+      { ...record, customer: { ...record.customer, name: "" } },
+      { ...record, customer: { ...record.customer, idNumber: "" } },
+      { ...record, price: "0" },
+      { ...record, currency: "USD" },
+      { ...record, direction: "invalid" },
+      { ...record, shopId: otherShop },
+      { ...record, createdBy: outsider },
+      { ...record, id: randomUUID() },
+    ]) {
+      await assert.rejects(db.query("insert into records(id,shop_id,created_by,snapshot) values($1,$2,$3,$4)", [record.id, shop, owner, JSON.stringify(invalid)]), /valid_snapshot/);
+    }
+    assert.equal((await db.query("select * from records")).rows.length, 0);
+  } finally { await db.close(); }
 });

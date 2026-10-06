@@ -34,3 +34,30 @@ export interface CodeLookup {
   code: IssuedCode | null;
   reason: string | null;
 }
+
+export interface AdminRecordSummary {
+  id: string;
+  created_by: string;
+  reference: string;
+  direction: "buy" | "sell";
+  occurredAt: string;
+  customerName: string;
+  brand: string;
+  model: string;
+  imei: string;
+  price: string;
+}
+export interface AdminRecordsResult {
+  records: AdminRecordSummary[];
+  total: number;
+}
+export interface AdminRecordDetail {
+  record: import("../../domain/models").Transaction;
+  amendments: import("../../domain/models").Amendment[];
+}
+export interface AdminRecordScope {
+  shopId: string;
+  shopName: string;
+  userId?: string;
+  accountLabel?: string;
+}

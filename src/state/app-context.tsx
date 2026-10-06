@@ -1,3 +1,5 @@
+import { usePhotoStorage } from "../hooks/use-photo-storage";
+import { stopPhotoWork } from "../services/photo-events";
 import * as Crypto from "expo-crypto";
 import * as Network from "expo-network";
 import {
@@ -52,6 +54,7 @@ function useController() {
   const [amendments, setAmendments] = useState<Amendment[]>([]);
   const [operations, setOperations] = useState<Operation[]>([]);
   const [membership, setMembership] = useState<Membership | null>(null);
+  const onlinePhotos = usePhotoStorage(membership, phase === "ready", demo);
   const [syncing, setSyncing] = useState(false);
   const [notice, setNotice] = useState("");
   const repository = useRef<Repository | null>(null);
@@ -120,6 +123,7 @@ function useController() {
   }, [refresh]);
   const activate = useCallback(
     (m: Membership, isDemo = false) => {
+      stopPhotoWork();
       transitions.current++;
       const task = activationQueue.current
         .catch(() => {})
@@ -287,6 +291,7 @@ function useController() {
     await activate(demoMembership(), true);
   }
   async function signOut() {
+    stopPhotoWork();
     await activationQueue.current.catch(() => {});
     await closeReader();
     if (!demoRef.current && (await repository.current?.operations())?.length)
@@ -316,6 +321,7 @@ function useController() {
   }
   async function discardDraft(id: string) {
     const repo = repository.current!;
+    await onlinePhotos.discard(id);
     await repo.discardDraft(id);
     await discardDraftPhotos({ shopId: repo.membership.shopId, userId: repo.membership.userId, recordId: id }).catch(() => setNotice("photoRemoveFailed"));
     setDrafts(current => current.filter(d => d.id !== id));
@@ -325,6 +331,7 @@ function useController() {
     setRecords((current) => [record, ...current.filter((r) => r.id !== record.id)]);
     setDrafts((current) => current.filter((item) => item.id !== d.id));
     await refresh().catch(() => setNotice("cloudRefreshFailed"));
+    await onlinePhotos.enqueue(record.id);
     return record;
   }
   async function saveFingerprints(
@@ -400,6 +407,7 @@ function useController() {
   }
   return {
     phase,
+    onlinePhotos,
     language,
     gregorian,
     t,

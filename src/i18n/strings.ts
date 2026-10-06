@@ -1,6 +1,180 @@
 import type { Language } from "../domain/models";
 import { digits } from "../domain/validation";
 const copy = {
+  photosStorageTitle: ["Photos & storage", "عکسونه او ساتنه", "عکس‌ها و ذخیره‌سازی"],
+  photosStorageHint: [
+    "Manage local photos, online storage, and uploads.",
+    "ځايي عکسونه، آنلاین ساتنه او د عکسونو لېږد تنظیم کړئ.",
+    "عکس‌های محلی، ذخیره آنلاین و بارگذاری‌ها را مدیریت کنید.",
+  ],
+  supportTitle: ["Help & company", "مرسته او شرکت", "راهنما و شرکت"],
+  supportSubtitle: [
+    "We're here to help",
+    "موږ ستاسو مرستې ته چمتو یو",
+    "برای کمک به شما اینجا هستیم",
+  ],
+  supportCompanyRole: [
+    "The team behind Mobile Records",
+    "د Mobile Records جوړوونکې ډله",
+    "تیم سازنده Mobile Records",
+  ],
+  supportAbout: [
+    "Radefy Systems is an independent software company based in Khost, Afghanistan. We build custom business systems, web platforms, mobile and desktop apps, and AI-assisted automation.",
+    "رادیفای سیستمز د افغانستان په خوست کې د سافټویر یو خپلواک شرکت دی. موږ ځانګړي سوداګریز سیستمونه، وېبپاڼې، د موبایل او کمپیوټر اپونه او د مصنوعي ځیرکتیا په مرسته اتومات حلونه جوړوو.",
+    "رادیفای سیستمز یک شرکت مستقل نرم‌افزاری در خوست، افغانستان است. ما سیستم‌های اختصاصی کسب‌وکار، پلتفرم‌های وب، برنامه‌های موبایل و دسکتاپ و راهکارهای خودکار با کمک هوش مصنوعی می‌سازیم.",
+  ],
+  supportContact: [
+    "Contact Radefy Systems",
+    "له رادیفای سیستمز سره اړیکه",
+    "تماس با رادیفای سیستمز",
+  ],
+  supportContactAdmin: [
+    "Contact administrator",
+    "له ادارې سره اړیکه",
+    "تماس با مدیر",
+  ],
+  supportWhatsapp: [
+    "Chat on WhatsApp",
+    "په واټساپ کې اړیکه",
+    "گفتگو در واتساپ",
+  ],
+  supportCall: ["Call us", "موږ ته زنګ ووهئ", "با ما تماس بگیرید"],
+  supportWebsite: [
+    "Visit our website",
+    "زموږ وېبپاڼه وګورئ",
+    "بازدید از وب‌سایت ما",
+  ],
+  supportSettingsHint: [
+    "Company information, phone, WhatsApp, and help with online photo storage.",
+    "د شرکت معلومات، د اړیکې شمېره، واټساپ او د عکسونو د آنلاین ساتنې مرسته.",
+    "اطلاعات شرکت، شماره تماس، واتساپ و راهنمای ذخیره آنلاین عکس‌ها.",
+  ],
+  photoContactAdminHint: [
+    "Contact the Radefy Systems administrator to enable online photo storage for your shop or change your storage allowance. Activation and pricing are arranged with our team.",
+    "د خپل دوکان د عکسونو د آنلاین ساتنې د فعالولو یا د ځای د اندازې د بدلولو لپاره د رادیفای سیستمز له ادارې سره اړیکه ونیسئ. فعالول او بیه زموږ له ډلې سره ټاکل کېږي.",
+    "برای فعال‌سازی ذخیره آنلاین عکس‌های فروشگاه یا تغییر سهمیه ذخیره، با مدیر رادیفای سیستمز تماس بگیرید. فعال‌سازی و قیمت با تیم ما هماهنگ می‌شود.",
+  ],
+  supportStorageDetails: [
+    "Tell us your shop name and how much storage you need. Sending a request does not activate storage; an administrator must enable it. Your photos stay on your phone, and new photos also upload after saving a record once online storage is enabled.",
+    "د خپل دوکان نوم او د اړتیا وړ ځای اندازه راکړئ. د غوښتنې لېږل ساتنه نه فعالوي؛ اداره یې باید فعاله کړي. عکسونه په موبایل کې پاتې کېږي او له فعالولو وروسته نوي عکسونه د ثبت له خوندي کولو سره آنلاین هم لېږل کېږي.",
+    "نام فروشگاه و مقدار فضای مورد نیاز را به ما بگویید. ارسال درخواست، ذخیره آنلاین را فعال نمی‌کند؛ مدیر باید آن را فعال کند. عکس‌ها در گوشی می‌مانند و پس از فعال‌سازی، عکس‌های جدید بعد از ذخیره معامله آنلاین نیز بارگذاری می‌شوند.",
+  ],
+  supportLinkFailed: [
+    "Could not open this link. Use the phone number or website shown here to contact us.",
+    "دا لینک خلاص نه شو. دلته ښودل شوې شمېره یا وېبپاڼه وکاروئ.",
+    "این پیوند باز نشد. از شماره تلفن یا وب‌سایت نمایش‌داده‌شده برای تماس استفاده کنید.",
+  ],
+  photoOnlineTitle: [
+    "Online photo storage",
+    "د عکسونو آنلاین ساتنه",
+    "ذخیره آنلاین عکس‌ها",
+  ],
+  photoOnlineHint: [
+    "Photos stay on this phone. If your administrator enables online storage, accepted photos also upload after saving the record.",
+    "عکسونه په دې موبایل کې پاتې کېږي. د ادارې له فعالولو وروسته، د ثبت له خوندي کولو سره عکسونه آنلاین هم ساتل کېږي.",
+    "عکس‌ها در این گوشی می‌مانند. پس از فعال‌سازی توسط مدیر، عکس‌های تأییدشده پس از ذخیره معامله آنلاین نیز ذخیره می‌شوند.",
+  ],
+  photoLocalOnly: ["Local only", "یوازې په موبایل کې", "فقط در گوشی"],
+  photoOnlineEnabled: [
+    "Online storage enabled",
+    "آنلاین ساتنه فعاله ده",
+    "ذخیره آنلاین فعال است",
+  ],
+  photoRequestPending: [
+    "Activation request pending",
+    "د فعالولو غوښتنه په تمه ده",
+    "درخواست فعال‌سازی در انتظار است",
+  ],
+  photoUploadsPaused: [
+    "Uploads paused by administrator",
+    "آنلاین لېږد د ادارې لخوا درول شوی",
+    "بارگذاری توسط مدیر متوقف شده",
+  ],
+  photoStorageFull: [
+    "Storage full — contact your administrator",
+    "آنلاین ځای ډک دی؛ له ادارې سره اړیکه ونیسئ",
+    "فضای ذخیره پر است؛ با مدیر تماس بگیرید",
+  ],
+  photoCloudUnavailable: [
+    "Online photos unavailable. Local photos remain safe; retry when connected.",
+    "آنلاین عکسونه اوس نشته. ځايي عکسونه خوندي دي؛ بیا هڅه وکړئ.",
+    "عکس‌های آنلاین در دسترس نیست. عکس‌های محلی محفوظ‌اند؛ دوباره تلاش کنید.",
+  ],
+  photoStorageUsage: ["Storage used", "کارول شوی ځای", "فضای مصرف‌شده"],
+  photoRequestEnable: [
+    "Request online photos",
+    "د آنلاین عکسونو غوښتنه",
+    "درخواست ذخیره آنلاین",
+  ],
+  photoRefreshStatus: [
+    "Refresh storage status",
+    "د ساتنې حالت تازه کړئ",
+    "تازه‌سازی وضعیت ذخیره",
+  ],
+  photoRetryUploads: [
+    "Retry uploads",
+    "لېږد بیا هڅه کړئ",
+    "تلاش مجدد بارگذاری",
+  ],
+  photoBackfill: [
+    "Upload older photos from this phone",
+    "د دې موبایل پخواني عکسونه پورته کړئ",
+    "بارگذاری عکس‌های قبلی این گوشی",
+  ],
+  photoBackfillConfirm: [
+    "Upload accepted photos for saved records from this account and shop on this phone. Missing files and newer online versions are skipped. This uses your storage allowance and mobile data.",
+    "د دې حساب او دوکان پخواني ثبت شوي عکسونه آنلاین پورته کړئ. ورک فایلونه او نوي آنلاین عکسونه نه بدلېږي. دا ستاسو آنلاین ځای او انټرنېټ کاروي.",
+    "عکس‌های ثبت‌شده این حساب و فروشگاه در این گوشی بارگذاری می‌شوند. فایل‌های مفقود و نسخه‌های آنلاین جدیدتر نادیده گرفته می‌شوند. این کار از سهمیه ذخیره و اینترنت شما استفاده می‌کند.",
+  ],
+  photoBackfillStart: [
+    "Start uploading older photos",
+    "د پخوانیو عکسونو لېږد پیل کړئ",
+    "شروع بارگذاری عکس‌های قبلی",
+  ],
+  photoAfterSave: [
+    "Saved on phone · Uploads after saving the record",
+    "په موبایل کې خوندي · د ثبت وروسته آنلاین لېږل کېږي",
+    "در گوشی ذخیره شد · پس از ذخیره معامله بارگذاری می‌شود",
+  ],
+  photoWaiting: ["Waiting to upload", "د لېږد په تمه", "در انتظار بارگذاری"],
+  photoUploading: ["Uploading", "لېږل کېږي", "در حال بارگذاری"],
+  photoSavedOnline: ["Saved online", "آنلاین خوندي شو", "آنلاین ذخیره شد"],
+  photoUploadFailed: [
+    "Upload failed — retry available",
+    "لېږد ناکام شو؛ بیا هڅه وکړئ",
+    "بارگذاری ناموفق؛ دوباره تلاش کنید",
+  ],
+  photoTooLarge: [
+    "Photo exceeds 10 MB or preview exceeds 512 KB. Choose a smaller photo. The original remains on this phone.",
+    "عکس له ۱۰ MB لوی دی. کوچنی عکس وټاکئ؛ اصلي عکس په موبایل کې دی.",
+    "عکس بیشتر از ۱۰ MB است. عکس کوچک‌تری انتخاب کنید؛ اصل عکس در گوشی باقی است.",
+  ],
+  photoChecksumFailed: [
+    "Photo verification failed. Retry the upload.",
+    "د عکس تایید ناکام شو؛ بیا یې ولېږئ.",
+    "تأیید عکس ناموفق بود؛ دوباره بارگذاری کنید.",
+  ],
+  photoRecordMissing: [
+    "Photo waits until the record is saved",
+    "عکس د ثبت خوندي کولو ته منتظر دی",
+    "عکس در انتظار ذخیره معامله است",
+  ],
+  photoNotFound: [
+    "Online photo no longer available",
+    "آنلاین عکس نور نشته",
+    "عکس آنلاین دیگر در دسترس نیست",
+  ],
+  photoUploadExpired: [
+    "Upload expired. Add the photo again.",
+    "د لېږد وخت پای ته رسېدلی؛ عکس بیا ورزیات کړئ.",
+    "مهلت بارگذاری تمام شد؛ عکس را دوباره اضافه کنید.",
+  ],
+  photoRateLimited: [
+    "Too many pending uploads. Retry shortly.",
+    "ډېر عکسونه په تمه دي؛ لږ وروسته هڅه وکړئ.",
+    "بارگذاری‌های زیادی در انتظارند؛ کمی بعد تلاش کنید.",
+  ],
+
   receiptPhotoUnavailable: [
     "No photo available on this device",
     "په دې وسیله عکس نشته",
@@ -28,9 +202,9 @@ const copy = {
     "اثر انگشت فیزیکی را اینجا بگذارید",
   ],
   receiptLocalAttachments: [
-    "Attachments v1 · Photos available on this device and enrollment status at export time. Attachments may differ on reprints.",
-    "ضمیمې v1 · د چاپ پر وخت په دې وسیله شته عکسونه او د ثبت حالت. په بیا چاپ کې ضمیمې بدلېدای شي.",
-    "ضمائم v1 · عکس‌های موجود در این دستگاه و وضعیت ثبت هنگام خروجی. ضمائم ممکن است در چاپ مجدد متفاوت باشند.",
+    "Attachments v1 · Photo versions available at export time and current enrollment status. Attachments may differ on reprints.",
+    "ضمیمې v1 · د چاپ پر وخت د عکسونو شته نسخې او د ثبت حالت. په بیا چاپ کې ضمیمې بدلېدای شي.",
+    "ضمائم v1 · نسخه‌های عکس موجود هنگام خروجی و وضعیت ثبت هنگام خروجی. ضمائم ممکن است در چاپ مجدد متفاوت باشند.",
   ],
   idType: ["Tazkira type", "د تذکرې ډول", "نوع تذکره"],
   enid: ["ENID", "ENID", "ENID"],
@@ -105,9 +279,9 @@ const copy = {
     "عکسی در این گوشی نیست",
   ],
   localPhotoHint: [
-    "Optional · Saved on this phone only. Never uploaded with records or included in printed forms.",
-    "اختیاري · یوازې په دې موبایل کې ساتل کېږي. له ثبتونو سره نه لېږل کېږي او نه چاپېږي.",
-    "اختیاری · فقط در این گوشی ذخیره می‌شود. همراه سوابق ارسال یا چاپ نمی‌شود.",
+    "Optional · Saved on this phone. Online copies are made only when enabled by your administrator. Current photos can appear on the receipt.",
+    "اختیاري · په دې موبایل کې ساتل کېږي. آنلاین کاپي یوازې د ادارې په فعالولو جوړېږي. اوسني عکسونه په رسید کې چاپېدای شي.",
+    "اختیاری · در این گوشی ذخیره می‌شود. نسخه آنلاین فقط با فعال‌سازی مدیر ساخته می‌شود. عکس‌های فعلی در رسید قابل چاپ‌اند.",
   ],
   localPhotosNativeOnly: [
     "Local photos are available in the iPhone and Android apps. Browser previews cannot save attachments.",

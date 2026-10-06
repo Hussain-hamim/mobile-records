@@ -23,6 +23,8 @@ function Routes() {
           <Stack.Screen name="new-record" />
           <Stack.Screen name="record/[id]" />
           <Stack.Screen name="customer/[id]" />
+          <Stack.Screen name="support" />
+          <Stack.Screen name="photos-storage" />
         </Stack>
       ) : (
         <AuthScreen />

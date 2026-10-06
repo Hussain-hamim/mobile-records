@@ -1,3 +1,6 @@
+import { useRecordPhotos } from "../hooks/use-record-photos";
+import { photoRequest } from "../services/online-photo-api";
+import { notifyPhotoChanges } from "../services/photo-events";
 import { useEffect, useRef, useState } from "react";
 import {
   Image,
@@ -80,6 +83,7 @@ function RecordPhotoContent({
     userId: membership!.userId,
     recordId,
   };
+  const remote = useRecordPhotos(recordId, !!savedRecord);
   const [photos, setPhotos] = useState<LocalPhotoSet>({ photos: {} });
   const [selected, setSelected] = useState<PhotoSlot | null>(null);
   const [capturingCard, setCapturingCard] = useState(false);
@@ -91,6 +95,7 @@ function RecordPhotoContent({
   const [editorUri, setEditorUri] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [removeConfirm, setRemoveConfirm] = useState(false);
+  const [photoRevision, setPhotoRevision] = useState(0);
   const [baseId, setBaseId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -116,6 +121,16 @@ function RecordPhotoContent({
         for (const uri of files) void discardPickedPhoto(uri).catch(() => {});
     };
   }, [shopId, userId, recordId, t]);
+  const displayPhotos = { ...photos.photos, ...remote.images };
+  for (const head of remote.cloud.heads)
+    if (!head.photo_id) delete displayPhotos[head.slot];
+  for (const job of app.onlinePhotos.jobs)
+    if (
+      job.recordId === recordId &&
+      job.error !== "conflict" &&
+      photos.photos[job.slot]
+    )
+      displayPhotos[job.slot] = photos.photos[job.slot];
   const label = (slot: PhotoSlot) =>
     t(
       slot === "person"
@@ -146,6 +161,16 @@ function RecordPhotoContent({
       const next = await work();
       if (active.current && next) {
         setPhotos(next);
+        if (selected) {
+          if (next.photos[selected])
+            await app.onlinePhotos.enqueue(
+              recordId,
+              selected,
+              reason,
+              photoRevision,
+            );
+          else await app.onlinePhotos.discard(recordId, selected);
+        }
         clearTemporary();
         setSelected(null);
       }
@@ -181,6 +206,16 @@ function RecordPhotoContent({
         ? async () => {
             if (membership?.role !== "owner") throw new Error("photoOwnerOnly");
             if (!reason.trim()) throw new Error("changeReasonRequired");
+            if (action === "remove" && photoRevision > 0) {
+              await photoRequest("remove", {
+                shopId,
+                recordId,
+                slot: selected,
+                baseRevision: photoRevision,
+                reason,
+              });
+              notifyPhotoChanges();
+            }
             await app.amend(savedRecord, reason, baseId, "photo", {
               slot: selected!,
               action,
@@ -191,7 +226,7 @@ function RecordPhotoContent({
   }
   const canEdit = editable && (!savedRecord || membership?.role === "owner");
   const previewUri =
-    pending?.uri ?? (selected ? photos.photos[selected] : undefined);
+    pending?.uri ?? (selected ? displayPhotos[selected] : undefined);
   return (
     <>
       <View style={{ marginBottom: 10 }}>
@@ -204,6 +239,10 @@ function RecordPhotoContent({
               disabled={busy}
               onPress={() => {
                 setSelected(slot);
+                setPhotoRevision(
+                  remote.cloud.heads.find((h) => h.slot === slot)?.revision ??
+                    0,
+                );
                 setError("");
                 setReason("");
                 setRemoveConfirm(false);
@@ -231,9 +270,9 @@ function RecordPhotoContent({
                   tileStyle,
                 ]}
               >
-                {photos.photos[slot] ? (
+                {displayPhotos[slot] ? (
                   <Image
-                    source={{ uri: photos.photos[slot] }}
+                    source={{ uri: displayPhotos[slot] }}
                     resizeMode="contain"
                     style={{ width: "100%", height: "100%" }}
                   />
@@ -256,13 +295,57 @@ function RecordPhotoContent({
               >
                 {label(slot)}
               </Txt>
+              {displayPhotos[slot] ? (
+                <Txt size={10} muted style={{ textAlign: "center" }}>
+                  {(() => {
+                    const job = app.onlinePhotos.jobs.find(
+                      (j) => j.recordId === recordId && j.slot === slot,
+                    );
+                    if (job)
+                      return t(
+                        job.state === "failed"
+                          ? "photoUploadFailed"
+                          : job.state === "uploading"
+                            ? "photoUploading"
+                            : "photoWaiting",
+                      );
+                    return t(
+                      remote.cloud.photos.some(
+                        (p) => p.slot === slot && p.state === "current",
+                      )
+                        ? "photoSavedOnline"
+                        : "photoLocalOnly",
+                    );
+                  })()}
+                </Txt>
+              ) : null}
             </Pressable>
           ))}
         </Row>
         <Txt size={11} muted style={{ marginTop: 8 }}>
-          {t("photoStorageStatus")}
+          {app.onlinePhotos.status?.entitlement.enabled
+            ? t(
+                savedRecord
+                  ? app.onlinePhotos.jobs.some((j) => j.recordId === recordId)
+                    ? "photoWaiting"
+                    : remote.cloud.photos.some((p) => p.state === "current")
+                      ? "photoSavedOnline"
+                      : "photoStorageStatus"
+                  : "photoAfterSave",
+              )
+            : t(
+                remote.cloud.photos.some((p) => p.state === "current")
+                  ? "photoSavedOnline"
+                  : "photoStorageStatus",
+              )}
         </Txt>
       </View>
+      {app.onlinePhotos.error ? (
+        <Notice
+          message={errorText(new Error(app.onlinePhotos.error), t)}
+          tone="error"
+        />
+      ) : null}
       {selected ? (
         <Modal
           animationType="slide"
@@ -308,7 +391,7 @@ function RecordPhotoContent({
                       sourceUri:
                         pending?.sourceUri ??
                         photos.sources?.[selected] ??
-                        photos.photos[selected]!,
+                        displayPhotos[selected]!,
                       action: pending?.action ?? "adjust",
                     });
                     setEditorUri(null);
@@ -388,7 +471,7 @@ function RecordPhotoContent({
                                   selected,
                                   pending.uri,
                                   options(
-                                    photos.photos[selected]
+                                    displayPhotos[selected]
                                       ? pending.action
                                       : "add",
                                   ),
@@ -406,7 +489,7 @@ function RecordPhotoContent({
                         </>
                       ) : (
                         <>
-                          {photos.photos[selected] ? (
+                          {displayPhotos[selected] ? (
                             <Button
                               secondary
                               label={t("adjustView")}
@@ -414,7 +497,7 @@ function RecordPhotoContent({
                               onPress={() =>
                                 setEditorUri(
                                   photos.sources?.[selected] ??
-                                    photos.photos[selected]!,
+                                    displayPhotos[selected]!,
                                 )
                               }
                             />
@@ -424,7 +507,7 @@ function RecordPhotoContent({
                               <Button
                                 icon="camera-outline"
                                 label={t(
-                                  photos.photos[selected]
+                                  displayPhotos[selected]
                                     ? "replacePhoto"
                                     : "capture",
                                 )}
@@ -446,7 +529,7 @@ function RecordPhotoContent({
                               />
                             </View>
                           </Row>
-                          {photos.photos[selected] ? (
+                          {displayPhotos[selected] ? (
                             removeConfirm ? (
                               <>
                                 <Button
