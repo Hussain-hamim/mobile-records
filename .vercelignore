@@ -1,0 +1,12 @@
+node_modules
+.expo
+dist
+android
+ios
+.git
+.credentials
+releases
+*.keystore
+modules/*/android/build
+modules/*/android/.cxx
+modules/*/android/.gradle

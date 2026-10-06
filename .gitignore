@@ -51,3 +51,4 @@ example
 
 # ZKTeco SDK checkout metadata. Runtime binaries are vendored by scripts/prepare-fingerprint.py.
 SDKzk9500/**/.svn/
+.vercel
