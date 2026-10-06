@@ -1,9 +1,25 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { formatDate, formatMoney, localDay } from "../src/domain/format";
+import {
+  formatAuditDate,
+  formatDate,
+  formatMoney,
+  localDay,
+} from "../src/domain/format";
 import { translate, type TextKey } from "../src/i18n/strings";
 
 for (const language of ["en", "ps", "fa"] as const) {
+  test(`${language}: audit timestamps keep Western digits in both calendars`, () => {
+    for (const gregorian of [true, false]) {
+      const stamp = formatAuditDate(
+        "2026-10-01T12:00:00Z",
+        language,
+        gregorian,
+      );
+      assert.match(stamp, /16:30:00/);
+      assert.doesNotMatch(stamp, /[۰-۹٠-٩]/);
+    }
+  });
   test(`${language}: money uses English digits and separators`, () => {
     assert.equal(formatMoney(24500.75, language), "24,500.75 AFN");
     assert.equal(formatMoney("۲۴۵۰۰.۷۵", language), "24,500.75 AFN");

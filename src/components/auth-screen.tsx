@@ -40,8 +40,8 @@ export function AuthScreen() {
     }
   }
   return (
-    <Screen keepBottomVisible>
-      <View style={{ paddingTop: 18, paddingBottom: 26 }}>
+    <Screen ambient keepBottomVisible>
+      <View style={{ paddingTop: 8, paddingBottom: 16 }}>
         <View
           style={{
             flexDirection: "row",
@@ -54,7 +54,7 @@ export function AuthScreen() {
             source={require("../../assets/Radefy Systems - Logo Variations by Alif Design-04.png")}
             accessibilityLabel="Radefy Systems"
             resizeMode="contain"
-            style={{ width: 72, height: 72 }}
+            style={{ width: 48, height: 48 }}
           />
           <Text
             style={{
@@ -67,11 +67,11 @@ export function AuthScreen() {
             Radefy Systems
           </Text>
         </View>
-        <View style={{ height: 35 }} />
-        <Txt size={38} bold style={{ marginBottom: 12 }}>
+        <View style={{ height: 12 }} />
+        <Txt size={28} bold style={{ marginBottom: 12 }}>
           {t("app")}
         </Txt>
-        <Txt size={17} muted style={{ marginBottom: 24 }}>
+        <Txt size={15} muted style={{ marginBottom: 12 }}>
           {t("tagline")}
         </Txt>
         <Row>
@@ -146,7 +146,7 @@ export function AuthScreen() {
       ) : null}
       <View
         style={{
-          marginTop: 28,
+          marginTop: 16,
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "center",

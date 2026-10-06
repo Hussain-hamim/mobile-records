@@ -1,51 +1,49 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import {
-    Children,
-    useEffect,
-    useRef,
-    useState,
-    type ComponentProps,
-    type ReactNode,
+  Children,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ReactNode,
 } from "react";
 import {
-    ActivityIndicator,
-    Keyboard,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
-    type ColorValue,
-    type TextInputProps,
-    type ViewStyle,
+  ActivityIndicator,
+  Keyboard,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type ColorValue,
+  type TextInputProps,
+  type ViewStyle,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import type { Language } from "../domain/models";
+import { useSegments } from "expo-router";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import {
+  hasArabicText,
+  inputTypography,
+  localScriptFont,
+  textRuns,
+} from "../domain/text-script";
 import { digits } from "../domain/validation";
 import type { TextKey } from "../i18n/strings";
 import { useApp } from "../state/app-context";
-export const colors = {
-  bg: "#F5F6FC",
-  paper: "#FFFFFF",
-  ink: "#20233D",
-  muted: "#72768C",
-  green: "#4F54E8",
-  mint: "#ECECFF",
-  line: "#E8EAF3",
-  amber: "#9E4F2D",
-  pale: "#FFF0E6",
-  red: "#BE3D51",
-  navy: "#252945",
-  peach: "#FFD5BC",
-  success: "#287D64",
-  lime: "#DDF4AA",
-};
+import { colors, motion } from "./theme";
+import {
+  GradientFill,
+  MotionPressable,
+  useVisualPreferences,
+} from "./visual-effects";
+import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
+export { colors } from "./theme";
 export type IconName = ComponentProps<typeof MaterialCommunityIcons>["name"];
-export function scriptFont(language: Language) {
-  return language === "ps" ? "BahijBaraem" : language === "fa" ? "Noto" : undefined;
-}
 export function Icon({
   name,
   size = 22,
@@ -64,36 +62,58 @@ export function Txt({
   bold = false,
   color,
   style,
+  ...rest
 }: {
   children: ReactNode;
   size?: number;
   muted?: boolean;
   bold?: boolean;
   color?: string;
-  style?: ComponentProps<typeof Text>["style"];
-}) {
+} & Omit<ComponentProps<typeof Text>, "children">) {
   const { rtl, language } = useApp();
-  const family = scriptFont(language);
+  const family = localScriptFont(language);
   const pashto = family === "BahijBaraem";
+  const content = Children.toArray(children);
+  const local = content.some(
+    (child) => typeof child === "string" && hasArabicText(child),
+  );
   return (
     <Text
+      {...rest}
       style={[
         {
           fontSize: size,
           lineHeight: size * (rtl ? 1.8 : 1.35),
           color: color ?? (muted ? colors.muted : colors.ink),
-          fontWeight: pashto ? undefined : bold ? "700" : "400",
+          fontWeight: bold ? "700" : "400",
           letterSpacing: bold && !rtl ? -0.4 : 0,
           textAlign: rtl ? "right" : "left",
-          writingDirection: rtl ? "rtl" : "ltr",
+          writingDirection: local ? "rtl" : "ltr",
         },
         style,
-        pashto ? { fontFamily: family, fontWeight: "normal" } : { fontFamily: family },
+        // The parent always keeps the standard English/system font.
+        { fontFamily: undefined },
       ]}
     >
-      {Children.map(children, (child) =>
-        typeof child === "string" ? digits(child) : child,
-      )}
+      {Children.map(children, (child) => {
+        if (typeof child !== "string" && typeof child !== "number")
+          return child;
+        return textRuns(String(child)).map((run, index) =>
+          run.local ? (
+            <Text
+              key={index}
+              style={{
+                fontFamily: family,
+                ...(pashto ? { fontWeight: "normal" as const } : {}),
+              }}
+            >
+              {run.text}
+            </Text>
+          ) : (
+            run.text
+          ),
+        );
+      })}
     </Text>
   );
 }
@@ -126,7 +146,9 @@ export function Screen({
   resetKey,
   keepBottomVisible = false,
   style,
+  ambient = false,
 }: {
+  ambient?: boolean;
   children: ReactNode;
   scroll?: boolean;
   resetKey?: string | number;
@@ -134,13 +156,18 @@ export function Screen({
   style?: ViewStyle;
 }) {
   const scrollRef = useRef<ScrollView>(null);
+  const insets = useSafeAreaInsets();
+  const segments = useSegments();
+  const bottomPadding = 16 + (segments[0] === "(tabs)" ? 0 : insets.bottom);
   const [keyboard, setKeyboard] = useState(0);
   useEffect(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [resetKey]);
   useEffect(() => {
-    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
     const show = Keyboard.addListener(showEvent, (event) => {
       setKeyboard(event.endCoordinates.height);
     });
@@ -159,6 +186,7 @@ export function Screen({
   }, [keepBottomVisible, keyboard]);
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+      {ambient ? <GradientFill ambient /> : null}
       {scroll ? (
         <ScrollView
           ref={scrollRef}
@@ -167,16 +195,22 @@ export function Screen({
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[
             styles.content,
+            { paddingBottom: bottomPadding },
             style,
-            Platform.OS === "android" && keyboard > 0
-              ? { paddingBottom: 32 + keyboard }
-              : null,
           ]}
         >
           {children}
         </ScrollView>
       ) : (
-        <View style={[styles.content, { flex: 1 }, style]}>{children}</View>
+        <View
+          style={[
+            styles.content,
+            { flex: 1, paddingBottom: bottomPadding },
+            style,
+          ]}
+        >
+          {children}
+        </View>
       )}
     </SafeAreaView>
   );
@@ -191,9 +225,9 @@ export function Heading({
   action?: ReactNode;
 }) {
   return (
-    <Row style={{ justifyContent: "space-between", marginBottom: 24 }}>
+    <Row style={{ justifyContent: "space-between", marginBottom: 12 }}>
       <View style={{ flex: 1 }}>
-        <Txt size={30} bold>
+        <Txt size={24} bold>
           {title}
         </Txt>
         {subtitle ? (
@@ -223,6 +257,7 @@ export function Button({
   disabled = false,
   loading = false,
   small = false,
+  variant,
 }: {
   label: string;
   onPress: () => void;
@@ -231,9 +266,13 @@ export function Button({
   disabled?: boolean;
   loading?: boolean;
   small?: boolean;
+  variant?: "primary" | "secondary" | "text" | "destructive";
 }) {
+  const kind = variant ?? (secondary ? "secondary" : "primary");
+  const subtle = kind === "secondary" || kind === "text";
+  const foreground = subtle ? colors.green : "#fff";
   return (
-    <Pressable
+    <MotionPressable
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: disabled || loading }}
@@ -242,32 +281,38 @@ export function Button({
       style={({ pressed }) => [
         styles.button,
         {
-          backgroundColor: secondary ? colors.mint : colors.green,
-          paddingVertical: small ? 10 : 16,
-          transform: [{ scale: pressed ? 0.98 : 1 }],
+          backgroundColor:
+            kind === "text"
+              ? "transparent"
+              : kind === "secondary"
+                ? colors.mint
+                : kind === "destructive"
+                  ? colors.red
+                  : colors.green,
+          paddingVertical: small ? 8 : 10,
+          minHeight: small ? 44 : 48,
+          overflow: "hidden",
           opacity: disabled || loading ? 0.5 : pressed ? 0.8 : 1,
         },
       ]}
     >
+      {kind === "primary" ? <GradientFill /> : null}
       <Row style={{ justifyContent: "center", gap: 8 }}>
         {loading ? (
-          <ActivityIndicator color={secondary ? colors.green : "#fff"} />
+          <ActivityIndicator color={foreground} />
         ) : icon ? (
-          <Icon
-            name={icon}
-            color={secondary ? colors.green : "#fff"}
-            size={20}
-          />
+          <Icon name={icon} color={foreground} size={20} />
         ) : null}
         <Txt
           size={small ? 13 : 15}
           bold
-          color={secondary ? colors.green : "#fff"}
+          style={{ flexShrink: 1, textAlign: "center" }}
+          color={foreground}
         >
           {label}
         </Txt>
       </Row>
-    </Pressable>
+    </MotionPressable>
   );
 }
 export function Field({
@@ -281,8 +326,12 @@ export function Field({
 }: TextInputProps & { label: string; numeric?: boolean; complete?: boolean }) {
   const { rtl, language } = useApp();
   const [focused, setFocused] = useState(false);
+  const typography = inputTypography(
+    numeric || rest.secureTextEntry ? "" : value || rest.placeholder || "",
+    language,
+  );
   return (
-    <View style={{ gap: 8, marginBottom: 18 }}>
+    <View style={{ gap: 4, marginBottom: 12 }}>
       <Txt size={13} bold>
         {label}
       </Txt>
@@ -297,23 +346,23 @@ export function Field({
               : undefined
           }
           multiline={multiline}
-          placeholderTextColor="#969AAF"
+          placeholderTextColor={colors.muted}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           style={[
             styles.input,
             {
-              fontFamily: numeric ? undefined : scriptFont(language),
-              fontWeight: language === "ps" && !numeric ? "normal" : undefined,
+              ...typography,
+              fontWeight:
+                typography.fontFamily === "BahijBaraem" ? "normal" : undefined,
               borderColor: complete
                 ? colors.success
                 : focused
                   ? colors.green
                   : colors.line,
-              backgroundColor: focused ? colors.paper : "#F8F9FD",
+              backgroundColor: focused ? colors.paper : colors.bg,
               textAlign: numeric ? "left" : rtl ? "right" : "left",
-              writingDirection: numeric ? "ltr" : rtl ? "rtl" : "ltr",
-              minHeight: multiline ? 88 : 51,
+              minHeight: multiline ? 80 : 48,
               paddingEnd: complete ? 42 : undefined,
             },
           ]}
@@ -352,7 +401,7 @@ export function Chip({
       accessibilityState={{ selected: active }}
       onPress={onPress}
       style={{
-        borderRadius: 24,
+        borderRadius: 12,
         minHeight: 44,
         justifyContent: "center",
         paddingVertical: 9,
@@ -383,7 +432,7 @@ export function Notice({
         padding: 13,
         backgroundColor: tone === "error" ? "#FBECE7" : colors.pale,
         borderRadius: 12,
-        marginBottom: 14,
+        marginBottom: 12,
       }}
     >
       <Txt size={12} color={tone === "error" ? colors.red : colors.amber}>
@@ -394,9 +443,9 @@ export function Notice({
 }
 export function Empty({ title, hint }: { title: string; hint?: string }) {
   return (
-    <View style={{ alignItems: "center", paddingVertical: 48, gap: 12 }}>
+    <View style={{ alignItems: "center", paddingVertical: 24, gap: 12 }}>
       <View
-        style={{ padding: 20, borderRadius: 28, backgroundColor: colors.mint }}
+        style={{ padding: 12, borderRadius: 12, backgroundColor: colors.mint }}
       >
         <Icon
           name="book-open-page-variant-outline"
@@ -430,7 +479,7 @@ export function IconButton({
       style={({ pressed }) => ({
         width: 46,
         height: 46,
-        borderRadius: 16,
+        borderRadius: 12,
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: pressed ? colors.mint : colors.paper,
@@ -452,7 +501,7 @@ export function SectionTitle({
   hint?: string;
 }) {
   return (
-    <Row style={{ marginBottom: 18 }}>
+    <Row style={{ marginBottom: 12 }}>
       {icon ? (
         <View
           style={{
@@ -465,7 +514,7 @@ export function SectionTitle({
         </View>
       ) : null}
       <View style={{ flex: 1 }}>
-        <Txt size={17} bold>
+        <Txt size={16} bold>
           {title}
         </Txt>
         {hint ? (
@@ -483,21 +532,27 @@ export function Disclosure({
   icon,
   children,
   initiallyOpen = false,
+  forceOpen = false,
 }: {
   title: string;
   hint?: string;
   icon?: IconName;
   children: ReactNode;
   initiallyOpen?: boolean;
+  forceOpen?: boolean;
 }) {
   const [open, setOpen] = useState(initiallyOpen);
+  const { reduceMotion } = useVisualPreferences();
+  const expanded = open || forceOpen;
+  const [visited, setVisited] = useState(initiallyOpen || forceOpen);
+  if (expanded && !visited) setVisited(true);
   return (
     <View>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={title}
-        accessibilityState={{ expanded: open }}
-        onPress={() => setOpen(!open)}
+        accessibilityState={{ expanded }}
+        onPress={() => setOpen(!expanded)}
         style={{ paddingVertical: 12, minHeight: 48 }}
       >
         <Row>
@@ -523,13 +578,36 @@ export function Disclosure({
             ) : null}
           </View>
           <Icon
-            name={open ? "chevron-up" : "chevron-down"}
+            name={expanded ? "chevron-up" : "chevron-down"}
             size={21}
             color={colors.muted}
           />
         </Row>
       </Pressable>
-      {open ? <View style={{ paddingTop: 16 }}>{children}</View> : null}
+      <Animated.View
+        layout={
+          reduceMotion
+            ? undefined
+            : LinearTransition.duration(motion.disclosure)
+        }
+        style={{ overflow: "hidden" }}
+      >
+        <View
+          style={expanded ? { paddingTop: 8 } : { display: "none" }}
+          accessibilityElementsHidden={!expanded}
+          importantForAccessibility={expanded ? "auto" : "no-hide-descendants"}
+        >
+          {visited ? (
+            <Animated.View
+              entering={
+                reduceMotion ? undefined : FadeIn.duration(motion.disclosure)
+              }
+            >
+              {children}
+            </Animated.View>
+          ) : null}
+        </View>
+      </Animated.View>
     </View>
   );
 }
@@ -544,16 +622,17 @@ export function SearchField({
 }) {
   const { rtl, t, language } = useApp();
   const [focused, setFocused] = useState(false);
+  const typography = inputTypography(value || placeholder, language);
   return (
     <Row
       style={{
         backgroundColor: colors.paper,
         borderWidth: 1,
         borderColor: focused ? colors.green : colors.line,
-        borderRadius: 18,
+        borderRadius: 12,
         paddingHorizontal: 16,
-        marginBottom: 20,
-        minHeight: 56,
+        marginBottom: 12,
+        minHeight: 48,
       }}
     >
       <Icon name="magnify" size={23} color={colors.muted} />
@@ -569,10 +648,11 @@ export function SearchField({
           outlineWidth: 0,
           flex: 1,
           minWidth: 0,
-          minHeight: 54,
+          minHeight: 46,
           fontSize: 13,
-          fontFamily: scriptFont(language),
-          fontWeight: language === "ps" ? "normal" : undefined,
+          ...typography,
+          fontWeight:
+            typography.fontFamily === "BahijBaraem" ? "normal" : undefined,
           color: colors.ink,
           textAlign: rtl ? "right" : "left",
         }}
@@ -601,22 +681,22 @@ export function errorText(error: unknown, t: (k: TextKey) => string) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   content: {
-    padding: 22,
-    paddingBottom: 32,
+    padding: 16,
+    paddingBottom: 16,
     maxWidth: 680,
     width: "100%",
     alignSelf: "center",
   },
   card: {
     backgroundColor: colors.paper,
-    borderRadius: 24,
-    padding: 20,
+    borderRadius: 12,
+    padding: 12,
     borderWidth: 1,
     borderColor: colors.line,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   button: {
-    borderRadius: 16,
+    borderRadius: 12,
     paddingHorizontal: 17,
     minHeight: 44,
     justifyContent: "center",

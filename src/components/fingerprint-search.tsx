@@ -19,8 +19,9 @@ export function FingerprintSearch({
   const { customers, t } = useApp();
   const [open, setOpen] = useState(false);
   return (
-    <View style={{ marginVertical: 12 }}>
+    <View style={{ marginBottom: 8 }}>
       <Button
+        small
         secondary
         label={t(returning ? "fpReturning" : "fpFind")}
         icon="fingerprint"

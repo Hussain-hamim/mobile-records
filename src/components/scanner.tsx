@@ -1,3 +1,4 @@
+import { useVisualPreferences } from "./visual-effects";
 import { useEffect, useRef, useState } from "react";
 import { AppState, Image, Linking, Modal, Platform, View } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -30,6 +31,7 @@ function ImeiScanner({
   onClose: () => void;
   onImei: (imei: string) => void;
 }) {
+  const { reduceMotion } = useVisualPreferences();
   const { t } = useApp();
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView | null>(null);
@@ -182,7 +184,7 @@ function ImeiScanner({
     }
   }
   return (
-    <Modal animationType="slide" onRequestClose={() => void close()}>
+    <Modal animationType={reduceMotion ? "none" : "slide"} onRequestClose={() => void close()}>
       <Screen>
         <Heading
           title={t("scanImei")}

@@ -30,7 +30,7 @@ import {
 } from "../services/local-photos";
 import { useApp } from "../state/app-context";
 import { customerPhotoAspect, tazkiraPhotoAspect } from "../domain/photo-frame";
-import { TazkiraPhotoCapture } from "./tazkira-photo-capture";
+import { RecordPhotoCapture } from "./record-photo-capture";
 import {
   Button,
   Card,
@@ -86,7 +86,7 @@ function RecordPhotoContent({
   const remote = useRecordPhotos(recordId, !!savedRecord);
   const [photos, setPhotos] = useState<LocalPhotoSet>({ photos: {} });
   const [selected, setSelected] = useState<PhotoSlot | null>(null);
-  const [capturingCard, setCapturingCard] = useState(false);
+  const [capturingPhoto, setCapturingPhoto] = useState(false);
   const [pending, setPending] = useState<{
     uri: string;
     sourceUri: string;
@@ -193,8 +193,8 @@ function RecordPhotoContent({
     temporary.current.add(uri);
     setPending({ uri, sourceUri: uri, action: "replace" });
   }
-  async function add(source: "camera" | "library") {
-    const uri = await pickRecordPhoto(source);
+  async function addFromLibrary() {
+    const uri = await pickRecordPhoto("library");
     if (uri) stage(uri);
     return null;
   }
@@ -258,7 +258,7 @@ function RecordPhotoContent({
               <View
                 style={[
                   {
-                    height: 156,
+                    height: 112,
                     backgroundColor: colors.paper,
                     borderWidth: 1,
                     borderColor: colors.line,
@@ -351,17 +351,19 @@ function RecordPhotoContent({
           animationType="slide"
           onRequestClose={() => {
             if (!busy && !editorUri) {
-              if (capturingCard) setCapturingCard(false);
+              if (capturingPhoto) setCapturingPhoto(false);
               else close();
             }
           }}
         >
-          {capturingCard ? (
-            <TazkiraPhotoCapture
-              onClose={() => setCapturingCard(false)}
+          {capturingPhoto ? (
+            <RecordPhotoCapture
+              title={label(selected)}
+              kind={selected}
+              onClose={() => setCapturingPhoto(false)}
               onAccept={async (uri) => {
                 stage(uri);
-                setCapturingCard(false);
+                setCapturingPhoto(false);
               }}
             />
           ) : (
@@ -513,9 +515,7 @@ function RecordPhotoContent({
                                 )}
                                 disabled={busy || !localPhotosSupported}
                                 onPress={() => {
-                                  if (selected === "idFront")
-                                    setCapturingCard(true);
-                                  else void run(() => add("camera"));
+                                  setCapturingPhoto(true);
                                 }}
                               />
                             </View>
@@ -525,7 +525,7 @@ function RecordPhotoContent({
                                 icon="image-outline"
                                 label={t("photoFromDevice")}
                                 disabled={busy || !localPhotosSupported}
-                                onPress={() => void run(() => add("library"))}
+                                onPress={() => void run(() => addFromLibrary())}
                               />
                             </View>
                           </Row>

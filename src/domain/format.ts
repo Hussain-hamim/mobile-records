@@ -43,7 +43,21 @@ export function localDay(date: string) {
 }
 
 /** Audit timestamps use the selected calendar and explicit Kabul local time. */
-export function formatAuditDate(value: string, language: Language, gregorian: boolean) {
-  const time = new Intl.DateTimeFormat(language === "en" ? "en-GB" : language === "fa" ? "fa-AF" : "ps-AF", { timeZone: "Asia/Kabul", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(new Date(value));
+export function formatAuditDate(
+  value: string,
+  language: Language,
+  gregorian: boolean,
+) {
+  const time = new Intl.DateTimeFormat(
+    language === "en" ? "en-GB" : language === "fa" ? "fa-AF" : "ps-AF",
+    {
+      numberingSystem: "latn",
+      timeZone: "Asia/Kabul",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    },
+  ).format(new Date(value));
   return `${formatDate(value, language, gregorian)} · ${time}`;
 }

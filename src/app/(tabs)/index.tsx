@@ -1,3 +1,4 @@
+import { GradientFill, MotionPressable } from "../../components/visual-effects";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Image, Pressable, StyleSheet, View } from "react-native";
@@ -30,14 +31,14 @@ export default function Home() {
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          marginBottom: 28,
+          marginBottom: 12,
         }}
       >
         <Image
           source={require("../../../assets/Radefy Systems - Logo Variations by Alif Design-04.png")}
           accessibilityLabel="Radefy Systems"
           resizeMode="contain"
-          style={{ width: 64, height: 64 }}
+          style={{ width: 40, height: 40 }}
         />
         <View style={{ flex: 1, marginHorizontal: 8 }}>
           <Txt size={16} bold>
@@ -66,17 +67,17 @@ export default function Home() {
           </View>
         ) : null}
       </Row>
-      <Txt size={32} bold style={{ marginBottom: 6 }}>
+      <Txt size={24} bold style={{ marginBottom: 6 }}>
         {app.membership?.profile.shopName || t("home")}
       </Txt>
-      <Txt size={14} muted style={{ marginBottom: 24 }}>
+      <Txt size={12} muted style={{ marginBottom: 12 }}>
         {t("nextDeal")}
       </Txt>
-      <Row style={{ gap: 12, alignItems: "stretch", marginBottom: 16 }}>
+      <Row style={{ gap: 12, alignItems: "stretch", marginBottom: 12 }}>
         {(["buy", "sell"] as const).map((direction) => {
           const buy = direction === "buy";
           return (
-            <Pressable
+            <MotionPressable
               key={direction}
               accessibilityRole="button"
               accessibilityLabel={t(direction)}
@@ -87,13 +88,12 @@ export default function Home() {
                 styles.action,
                 {
                   backgroundColor: buy ? colors.green : colors.peach,
-                  transform: [{ scale: pressed ? 0.97 : 1 }],
+                  opacity: pressed ? 0.9 : 1,
                 },
               ]}
             >
-              <Row
-                style={{ justifyContent: "space-between", marginBottom: 28 }}
-              >
+              {buy ? <GradientFill /> : null}
+              <Row style={{ justifyContent: "space-between", marginBottom: 8 }}>
                 <View
                   style={[
                     styles.actionIcon,
@@ -103,26 +103,26 @@ export default function Home() {
                   <Icon
                     name={buy ? "arrow-bottom-left" : "arrow-top-right"}
                     color={buy ? "#fff" : colors.ink}
-                    size={27}
+                    size={22}
                   />
                 </View>
                 <Icon
                   name="plus"
                   size={18}
-                  color={buy ? "#C6C8FF" : "#AD7656"}
+                  color={buy ? colors.lime : colors.green}
                 />
               </Row>
-              <Txt size={20} bold color={buy ? "#fff" : colors.ink}>
+              <Txt size={17} bold color={buy ? "#fff" : colors.ink}>
                 {t(direction)}
               </Txt>
               <Txt
                 size={11}
-                color={buy ? "#E0E1FF" : "#774D3A"}
+                color={buy ? colors.lime : colors.green}
                 style={{ marginTop: 5 }}
               >
                 {t(buy ? "buyHint" : "sellHint")}
               </Txt>
-            </Pressable>
+            </MotionPressable>
           );
         })}
       </Row>
@@ -139,8 +139,8 @@ export default function Home() {
           <View
             style={{
               backgroundColor: colors.mint,
-              padding: 10,
-              borderRadius: 14,
+              padding: 8,
+              borderRadius: 10,
             }}
           >
             <Icon name="fingerprint" color={colors.ink} size={24} />
@@ -262,23 +262,23 @@ const styles = StyleSheet.create({
     backgroundColor: colors.mint,
     paddingHorizontal: 9,
     paddingVertical: 5,
-    borderRadius: 20,
+    borderRadius: 12,
   },
   dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.green },
-  action: { flex: 1, borderRadius: 26, padding: 20 },
+  action: { flex: 1, borderRadius: 12, padding: 12, overflow: "hidden" },
   actionIcon: {
-    width: 43,
-    height: 43,
-    borderRadius: 15,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },
   scan: {
-    borderRadius: 20,
+    borderRadius: 12,
     backgroundColor: colors.paper,
     borderWidth: 1,
     borderColor: colors.line,
-    padding: 14,
-    marginBottom: 16,
+    padding: 10,
+    marginBottom: 12,
   },
 });

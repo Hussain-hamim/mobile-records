@@ -1,8 +1,8 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useEffect, useRef, useState } from "react";
 import { AppState, Image, Linking, StyleSheet, View } from "react-native";
-import { tazkiraPhotoAspect, tazkiraPhotoGuide } from "../domain/photo-frame";
-import { cropCardPhoto } from "../services/card-photo";
+import { recordPhotoAspect, recordPhotoGuide } from "../domain/photo-frame";
+import { cropRecordPhoto } from "../services/capture-photo";
 import { discardPickedPhoto } from "../services/local-photos";
 import { useApp } from "../state/app-context";
 import {
@@ -16,10 +16,14 @@ import {
   errorText,
 } from "./ui";
 
-export function TazkiraPhotoCapture({
+export function RecordPhotoCapture({
+  title,
+  kind,
   onClose,
   onAccept,
 }: {
+  title: string;
+  kind: "person" | "idFront";
   onClose: () => void;
   onAccept: (uri: string) => Promise<void>;
 }) {
@@ -36,6 +40,7 @@ export function TazkiraPhotoCapture({
   );
   const active = useRef(true),
     working = useRef(false),
+    captureRevision = useRef(0),
     files = useRef(new Set<string>());
   async function cleanup() {
     const uris = [...files.current];
@@ -48,7 +53,10 @@ export function TazkiraPhotoCapture({
     active.current = true;
     const subscription = AppState.addEventListener("change", (state) => {
       setForeground(state === "active");
-      if (state !== "active") setReady(false);
+      if (state !== "active") {
+        captureRevision.current++;
+        setReady(false);
+      }
     });
     return () => {
       active.current = false;
@@ -72,28 +80,37 @@ export function TazkiraPhotoCapture({
     }
   }
   async function capture() {
+    if (!ready || !foreground) return;
     const geometry = { ...preview };
-    const result = await camera.current?.takePictureAsync({
-      quality: 1,
-      exif: false,
-      skipProcessing: false,
-    });
-    if (!result) throw new Error("cameraUnavailable");
-    files.current.add(result.uri);
-    if (!active.current) return;
-    const cropped = await cropCardPhoto(result, geometry);
-    files.current.add(cropped.uri);
-    // Remove the full camera image as soon as the cropped review copy is ready.
-    await discardPickedPhoto(result.uri);
-    files.current.delete(result.uri);
-    if (active.current) setPhoto(cropped.uri);
+    const revision = captureRevision.current;
+    let keepReview = false;
+    try {
+      const result = await camera.current?.takePictureAsync({
+        quality: 1,
+        exif: false,
+        skipProcessing: false,
+      });
+      if (!result) throw new Error("cameraUnavailable");
+      files.current.add(result.uri);
+      if (!active.current || revision !== captureRevision.current) return;
+      const cropped = await cropRecordPhoto(result, geometry);
+      files.current.add(cropped.uri);
+      // Never retain or hand off content outside the guide, even as an edit source.
+      await discardPickedPhoto(result.uri);
+      files.current.delete(result.uri);
+      if (!active.current || revision !== captureRevision.current) return;
+      setPhoto(cropped.uri);
+      keepReview = true;
+    } finally {
+      if (!keepReview) await cleanup();
+    }
   }
   const guide =
-    preview.width > 0 && preview.height > 0 ? tazkiraPhotoGuide(preview) : null;
+    preview.width > 0 && preview.height > 0 ? recordPhotoGuide(preview) : null;
   return (
     <Screen>
       <Heading
-        title={t("idFrontPhoto")}
+        title={title}
         action={
           <Button
             small
@@ -129,7 +146,7 @@ export function TazkiraPhotoCapture({
           <View
             style={{
               width: "100%",
-              aspectRatio: tazkiraPhotoAspect,
+              aspectRatio: recordPhotoAspect,
               backgroundColor: colors.paper,
               marginBottom: 16,
             }}
@@ -141,7 +158,9 @@ export function TazkiraPhotoCapture({
             />
           </View>
           <Txt muted style={{ marginBottom: 16 }}>
-            {t("photoCropReview")}
+            {t(
+              kind === "idFront" ? "photoCropReview" : "personPhotoCropReview",
+            )}
           </Txt>
           <Row>
             <View style={{ flex: 1 }}>
@@ -163,7 +182,12 @@ export function TazkiraPhotoCapture({
                 label={t("usePhoto")}
                 loading={busy}
                 disabled={busy}
-                onPress={() => void run(async () => { await onAccept(photo); files.current.delete(photo); })}
+                onPress={() =>
+                  void run(async () => {
+                    await onAccept(photo);
+                    files.current.delete(photo);
+                  })
+                }
               />
             </View>
           </Row>
@@ -171,15 +195,24 @@ export function TazkiraPhotoCapture({
       ) : (
         <>
           <Txt muted style={{ marginBottom: 14 }}>
-            {t("tazkiraPhotoFrameHint")}
+            {t(
+              kind === "idFront"
+                ? "tazkiraPhotoFrameHint"
+                : "personPhotoFrameHint",
+            )}
           </Txt>
           <View
-            onLayout={({ nativeEvent }) =>
+            onLayout={({ nativeEvent }) => {
+              if (
+                nativeEvent.layout.width !== preview.width ||
+                nativeEvent.layout.height !== preview.height
+              )
+                captureRevision.current++;
               setPreview({
                 width: nativeEvent.layout.width,
                 height: nativeEvent.layout.height,
-              })
-            }
+              });
+            }}
             style={{
               width: "100%",
               aspectRatio: 3 / 4,
@@ -254,6 +287,30 @@ export function TazkiraPhotoCapture({
                     borderColor: "#FFFFFF99",
                   }}
                 >
+                  {[1, 2].map((line) => (
+                    <View key={line} style={StyleSheet.absoluteFill}>
+                      <View
+                        style={{
+                          position: "absolute",
+                          left: `${(line * 100) / 3}%`,
+                          top: 0,
+                          bottom: 0,
+                          width: 1,
+                          backgroundColor: "#FFFFFF55",
+                        }}
+                      />
+                      <View
+                        style={{
+                          position: "absolute",
+                          top: `${(line * 100) / 3}%`,
+                          left: 0,
+                          right: 0,
+                          height: 1,
+                          backgroundColor: "#FFFFFF55",
+                        }}
+                      />
+                    </View>
+                  ))}
                   <View
                     style={[
                       styles.corner,

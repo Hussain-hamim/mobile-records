@@ -1,3 +1,5 @@
+import Animated, { FadeIn } from "react-native-reanimated";
+import { useVisualPreferences } from "./visual-effects";
 import { useEffect, useRef, useState } from "react";
 import { AppState, Modal, View } from "react-native";
 import { router } from "expo-router";
@@ -65,6 +67,7 @@ export function FingerprintPrompt({
   onManual?: () => void;
   onNew?: () => void;
 }) {
+  const { reduceMotion } = useVisualPreferences();
   const { t, membership, phase, customers } = useApp();
   const [step, setStep] = useState(0),
     [error, setError] = useState("");
@@ -211,7 +214,10 @@ export function FingerprintPrompt({
     else router.push({ pathname: "/customer/[id]", params: { id } });
   }
   return (
-    <Modal animationType="slide" onRequestClose={onClose}>
+    <Modal
+      animationType={reduceMotion ? "none" : "slide"}
+      onRequestClose={onClose}
+    >
       <Screen>
         <Heading
           title={t(
@@ -228,7 +234,7 @@ export function FingerprintPrompt({
         <Card
           style={{
             alignItems: "center",
-            paddingVertical: 32,
+            paddingVertical: 16,
             backgroundColor: colors.mint,
           }}
         >
@@ -240,7 +246,7 @@ export function FingerprintPrompt({
               backgroundColor: "#fff",
               alignItems: "center",
               justifyContent: "center",
-              marginBottom: 24,
+              marginBottom: 12,
             }}
           >
             <Icon
@@ -256,7 +262,12 @@ export function FingerprintPrompt({
           <Txt size={12} bold color={colors.green}>
             ZK9500 · {t("fpLocal")}
           </Txt>
-          <View accessibilityLiveRegion="polite" style={{ marginTop: 12 }}>
+          <Animated.View
+            key={status}
+            entering={reduceMotion ? undefined : FadeIn.duration(180)}
+            accessibilityLiveRegion="polite"
+            style={{ marginTop: 12 }}
+          >
             <Txt bold size={21} style={{ textAlign: "center" }}>
               {t(
                 error
@@ -264,16 +275,17 @@ export function FingerprintPrompt({
                   : (stateKeys[status] ?? "fingerprintPlace"),
               )}
             </Txt>
-          </View>
+          </Animated.View>
           {mode === "enroll" ? (
             <>
               <Txt muted style={{ marginTop: 14, textAlign: "center" }}>
                 {t(step === 3 ? "fpVerifyHint" : "fingerprintPress")}
               </Txt>
-              <Row style={{ marginTop: 24, gap: 12 }}>
+              <Row style={{ marginTop: 12, gap: 12 }}>
                 {[1, 2, 3].map((n) => (
-                  <View
-                    key={n}
+                  <Animated.View
+                    key={`${n}-${n <= step}`}
+                    entering={reduceMotion ? undefined : FadeIn.duration(180)}
                     style={{
                       width: 48,
                       height: 48,
@@ -286,7 +298,7 @@ export function FingerprintPrompt({
                     <Txt bold color={n <= step ? "#fff" : colors.muted}>
                       {n <= step ? "✓" : n}
                     </Txt>
-                  </View>
+                  </Animated.View>
                 ))}
               </Row>
             </>

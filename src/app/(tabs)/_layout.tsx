@@ -1,13 +1,21 @@
+import { useEffect } from "react";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
+import { useVisualPreferences } from "../../components/visual-effects";
+import { motion } from "../../components/theme";
 import { Tabs } from "expo-router";
-import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, Icon, scriptFont, type IconName } from "../../components/ui";
+import { colors, Icon, Txt, type IconName } from "../../components/ui";
 import { useApp } from "../../state/app-context";
 
 const tabColors = {
   background: "#FFFFFF",
-  border: "#E5E6F2",
-  inactive: "#686C83",
+  border: colors.line,
+  inactive: colors.muted,
 };
 
 function TabIcon({
@@ -19,60 +27,87 @@ function TabIcon({
   outline: IconName;
   filled: IconName;
 }) {
+  const { reduceMotion } = useVisualPreferences();
+  const active = useSharedValue(focused ? 1 : 0);
+  useEffect(() => {
+    active.value = withTiming(focused ? 1 : 0, {
+      duration: reduceMotion ? 0 : motion.tab,
+    });
+  }, [focused, reduceMotion, active]);
+  const indicator = useAnimatedStyle(() => ({ opacity: active.value }));
   return (
     <View style={styles.icon}>
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: colors.mint, borderRadius: 12 },
+          indicator,
+        ]}
+      />
       <Icon
         name={focused ? filled : outline}
         size={24}
-        color={focused ? colors.paper : tabColors.inactive}
+        color={focused ? colors.green : tabColors.inactive}
       />
     </View>
   );
 }
 
 export default function Layout() {
-  const { t, rtl, language } = useApp();
+  const { t, rtl } = useApp();
+  const { reduceTransparency } = useVisualPreferences();
   const insets = useSafeAreaInsets();
-  const { width, fontScale } = useWindowDimensions();
+  const { fontScale } = useWindowDimensions();
   return (
     <Tabs
       safeAreaInsets={{ bottom: 0, left: 0, right: 0 }}
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: colors.bg },
-        tabBarActiveTintColor: colors.paper,
+        tabBarActiveTintColor: colors.green,
         tabBarInactiveTintColor: tabColors.inactive,
-        tabBarActiveBackgroundColor: colors.green,
+        tabBarActiveBackgroundColor: "transparent",
         tabBarInactiveBackgroundColor: "transparent",
         tabBarHideOnKeyboard: true,
+        tabBarBackground: () => (
+          <View
+            pointerEvents="none"
+            style={[StyleSheet.absoluteFill, { backgroundColor: "#E3EFE7" }]}
+          >
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  backgroundColor: reduceTransparency
+                    ? "#F0F6F1"
+                    : "rgba(255,255,255,0.72)",
+                },
+              ]}
+            />
+          </View>
+        ),
         tabBarLabelPosition: "below-icon",
         tabBarStyle: [
           styles.dock,
           {
-            width: Math.min(width - insets.left - insets.right - 24, 600),
-            height: 82 + Math.max(0, Math.min(fontScale, 1.5) - 1) * 28,
-            marginBottom: Math.max(insets.bottom, 12),
+            width: "100%",
+            height: 64 + insets.bottom + Math.max(0, fontScale - 1) * 24,
+            paddingBottom: insets.bottom + 4,
+            paddingLeft: insets.left + 8,
+            paddingRight: insets.right + 8,
             direction: rtl ? "rtl" : "ltr",
           },
         ],
         tabBarItemStyle: styles.item,
         tabBarIconStyle: styles.iconSlot,
         tabBarLabel: ({ children, focused }) => (
-          <Text
+          <Txt
             numberOfLines={1}
             maxFontSizeMultiplier={1.5}
-            style={[
-              styles.label,
-              focused && styles.activeLabel,
-              {
-                writingDirection: rtl ? "rtl" : "ltr",
-                fontFamily: scriptFont(language),
-                fontWeight: language === "ps" ? "normal" : focused ? "700" : "400",
-              },
-            ]}
+            style={[styles.label, focused && styles.activeLabel]}
           >
             {children}
-          </Text>
+          </Txt>
         ),
       }}
     >
@@ -81,11 +116,7 @@ export default function Layout() {
         options={{
           title: t("home"),
           tabBarIcon: ({ focused }) => (
-            <TabIcon
-              focused={focused}
-              outline="home-outline"
-              filled="home"
-            />
+            <TabIcon focused={focused} outline="home-outline" filled="home" />
           ),
         }}
       />
@@ -131,21 +162,21 @@ export default function Layout() {
 const styles = StyleSheet.create({
   dock: {
     alignSelf: "center",
-    marginTop: 8,
-    paddingTop: 7,
+    marginTop: 0,
+    paddingTop: 4,
     paddingBottom: 7,
     paddingHorizontal: 6,
-    backgroundColor: tabColors.background,
-    borderWidth: 1,
+    backgroundColor: "#F0F6F1",
+    borderWidth: 0,
     borderTopWidth: 1,
     borderColor: tabColors.border,
     borderTopColor: tabColors.border,
-    borderRadius: 29,
-    boxShadow: "0 5px 20px rgba(37, 41, 69, 0.09)",
+    borderRadius: 0,
+
     elevation: 0,
   },
   item: {
-    borderRadius: 22,
+    borderRadius: 0,
     marginHorizontal: 3,
     overflow: "hidden",
   },
@@ -166,7 +197,7 @@ const styles = StyleSheet.create({
     color: tabColors.inactive,
   },
   activeLabel: {
-    color: colors.paper,
+    color: colors.green,
     fontWeight: "700",
   },
 });

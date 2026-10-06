@@ -1,21 +1,20 @@
 {
   "expo": {
-    "name": "Mobile Records",
+    "name": "Radefy MobileReg",
     "slug": "mobile-records",
-    "version": "1.0.0",
+    "version": "1.0.3",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/Radefy Systems - Logo Variations by Alif Design-04.png",
     "scheme": "mobilerecords",
     "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/Radefy Systems - Logo Variations by Alif Design-04.png"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/Radefy Systems - Logo Variations by Alif Design-04.png",
+        "backgroundColor": "#F6F8F5",
+        "monochromeImage": "./assets/Radefy Systems - Logo Variations by Alif Design-04.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.radefy.mobilerecords",
@@ -30,11 +29,11 @@
       "permissions": [
         "android.permission.CAMERA"
       ],
-      "versionCode": 1
+      "versionCode": 4
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/Radefy Systems - Logo Variations by Alif Design-04.png"
     },
     "plugins": [
       "expo-router",
@@ -50,9 +49,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#F4F6F0",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "backgroundColor": "#F6F8F5",
+          "image": "./assets/Radefy Systems - Logo Variations by Alif Design-04.png",
+          "imageWidth": 160
         }
       ],
       [

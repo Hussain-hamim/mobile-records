@@ -7,15 +7,16 @@ import { useApp } from "../state/app-context";
 import { playEnrollmentSuccess } from "../services/enrollment-sound";
 import { FingerprintPrompt } from "./fingerprint-prompt";
 import {
-    Button,
-    Card,
-    Field,
-    Icon,
-    Notice,
-    Row,
-    Txt,
-    colors,
-    errorText,
+  Button,
+  Card,
+  Disclosure,
+  Field,
+  Icon,
+  Notice,
+  Row,
+  Txt,
+  colors,
+  errorText,
 } from "./ui";
 
 export function FingerprintCards({
@@ -78,12 +79,12 @@ export function FingerprintCards({
   }
   return (
     <View style={{ gap: 4 }}>
-      {(["primary"] as const).map((slot) => {
+      {(["primary", "backup"] as const).map((slot) => {
         const finger = entries.find((f) => f.slot === slot);
         const manage =
           (manageStored && app.membership?.role === "owner") ||
           (finger && temporaryIds.includes(finger.id));
-        return (
+        const content = (
           <Card key={slot} style={cardStyle}>
             <Row>
               <Icon
@@ -92,7 +93,9 @@ export function FingerprintCards({
                 color={finger ? colors.green : colors.muted}
               />
               <View style={{ flex: 1 }}>
-                <Txt bold>{t("fpPrimary")}</Txt>
+                <Txt bold>
+                  {t(slot === "primary" ? "fpPrimary" : "fpBackup")}
+                </Txt>
                 <Txt muted size={12}>
                   {t(finger ? "fpEnrolled" : "fpNotEnrolled")}
                 </Txt>
@@ -164,6 +167,19 @@ export function FingerprintCards({
               </View>
             ) : null}
           </Card>
+        );
+        return slot === "backup" ? (
+          <Disclosure
+            key={slot}
+            title={t("fpBackup")}
+            hint={t(finger ? "fpEnrolled" : "fpNotEnrolled")}
+            icon="fingerprint"
+            forceOpen={action?.slot === "backup" && !scanning}
+          >
+            {content}
+          </Disclosure>
+        ) : (
+          content
         );
       })}
       <Notice message={error} tone="error" />

@@ -6,7 +6,7 @@ export function AppLoadingScreen() {
   const { t } = useApp();
 
   return (
-    <Screen scroll={false} style={styles.screen}>
+    <Screen ambient scroll={false} style={styles.screen}>
       <View style={styles.logo}>
         <Image
           source={require("../../assets/Radefy Systems - Logo Variations by Alif Design-04.png")}
@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
     borderRadius: 28,
     padding: 12,
-    marginBottom: 24,
+    marginBottom: 12,
   },
   image: { width: 88, height: 88 },
   title: { textAlign: "center" },

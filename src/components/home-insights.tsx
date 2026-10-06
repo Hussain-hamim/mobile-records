@@ -3,7 +3,7 @@ import { AppState, Pressable, View } from "react-native";
 import { homeMetrics, type MetricPeriod } from "../domain/home-metrics";
 import { formatDate, formatMoney } from "../domain/format";
 import { useApp } from "../state/app-context";
-import { Card, Icon, Row, Txt, colors } from "./ui";
+import { Card, Disclosure, Row, Txt, colors } from "./ui";
 
 export function HomeInsights() {
   const { records, amendments, gregorian, language, t } = useApp();
@@ -27,120 +27,79 @@ export function HomeInsights() {
   );
   const m = metrics[period];
   return (
-    <Card
-      style={{
-        backgroundColor: colors.navy,
-        borderColor: colors.navy,
-        marginBottom: 26,
-      }}
-    >
-      <Row style={{ justifyContent: "space-between", marginBottom: 16 }}>
-        <View style={{ flex: 1 }}>
-          <Txt color="#fff" size={18} bold>
-            {t("shopInsights")}
-          </Txt>
-          <Txt color="#B7BCD5" size={11}>
-            {t("metricsSubtitle")}
-          </Txt>
-        </View>
-        <Icon name="chart-bar" color={colors.lime} size={26} />
-      </Row>
-      <Row
-        style={{
-          gap: 4,
-          backgroundColor: "#41455F",
-          borderRadius: 14,
-          padding: 4,
-          marginBottom: 16,
-        }}
-      >
-        {(["today", "thisWeek", "thisMonth"] as const).map((p) => (
-          <Pressable
-            key={p}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: period === p }}
-            accessibilityLabel={t(p)}
-            onPress={() => setPeriod(p)}
-            style={{
-              flex: 1,
-              minHeight: 44,
-              borderRadius: 10,
-              backgroundColor: period === p ? colors.lime : "transparent",
-              justifyContent: "center",
-              paddingHorizontal: 4,
-            }}
-          >
-            <Txt
-              bold
-              size={12}
-              color={period === p ? colors.navy : "#D8DBF1"}
-              style={{ textAlign: "center" }}
-            >
-              {t(p)}
-            </Txt>
-          </Pressable>
-        ))}
-      </Row>
-      <Row style={{ gap: 8, alignItems: "flex-end", marginBottom: 14 }}>
-        <Txt color="#fff" size={36} bold>
-          {m.count}
-        </Txt>
-        <Txt color="#B7BCD5" size={13} style={{ paddingBottom: 7 }}>
-          {t("records")}
-        </Txt>
-      </Row>
-      <Row style={{ alignItems: "stretch", gap: 10 }}>
+    <Card>
+      <Row style={{ justifyContent: "space-between", gap: 8 }}>
         {(["buy", "sell"] as const).map((direction) => (
-          <View
-            key={direction}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              backgroundColor: "#34394F",
-              borderRadius: 16,
-              padding: 12,
-            }}
-          >
-            <Row style={{ gap: 5, marginBottom: 8 }}>
-              <Icon
-                name={
-                  direction === "buy" ? "arrow-bottom-left" : "arrow-top-right"
-                }
-                size={16}
-                color={direction === "buy" ? "#D8DBF1" : colors.lime}
-              />
-              <Txt color="#D8DBF1" size={12}>
-                {t(direction === "buy" ? "bought" : "sold")}
-              </Txt>
-            </Row>
-            <Txt color="#fff" size={20} bold>
-              {direction === "buy" ? m.purchases : m.sales}
+          <View key={direction} style={{ flex: 1 }}>
+            <Txt size={12} muted>
+              {t(direction === "buy" ? "bought" : "sold")} · {t(period)}
             </Txt>
-            <Txt
-              color={direction === "buy" ? "#D8DBF1" : colors.lime}
-              size={14}
-              bold
-              style={{ marginTop: 6 }}
-            >
-              {formatMoney(
-                direction === "buy" ? m.purchaseTotal : m.saleTotal,
-                language,
-              )}
+            <Txt size={20} bold color={colors.green}>
+              {direction === "buy" ? m.purchases : m.sales}
             </Txt>
           </View>
         ))}
+        <View style={{ flex: 1 }}>
+          <Txt size={12} muted>
+            {t("records")}
+          </Txt>
+          <Txt size={20} bold>
+            {m.count}
+          </Txt>
+        </View>
       </Row>
-      <Txt color="#B7BCD5" size={10} style={{ marginTop: 14 }}>
-        {formatDate(m.start, language, gregorian)} · {t("metricsToNow")}
-      </Txt>
-      <Txt color="#B7BCD5" size={10}>
-        {t(gregorian ? "metricsGregorian" : "metricsSolar")}
-      </Txt>
-      {!m.count ? (
-        <Txt color="#D8DBF1" size={12} style={{ marginTop: 10 }}>
-          {t("metricsEmpty")}
+      <Disclosure title={t("shopInsights")} icon="chart-bar">
+        <Row style={{ gap: 4, marginBottom: 12 }}>
+          {(["today", "thisWeek", "thisMonth"] as const).map((p) => (
+            <Pressable
+              key={p}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: period === p }}
+              onPress={() => setPeriod(p)}
+              style={{
+                flex: 1,
+                minHeight: 44,
+                borderRadius: 8,
+                justifyContent: "center",
+                backgroundColor: period === p ? colors.mint : colors.bg,
+              }}
+            >
+              <Txt
+                size={12}
+                bold={period === p}
+                color={colors.green}
+                style={{ textAlign: "center" }}
+              >
+                {t(p)}
+              </Txt>
+            </Pressable>
+          ))}
+        </Row>
+        <Row style={{ alignItems: "flex-start" }}>
+          {(["buy", "sell"] as const).map((direction) => (
+            <View key={direction} style={{ flex: 1 }}>
+              <Txt size={12} muted>
+                {t(direction === "buy" ? "bought" : "sold")}
+              </Txt>
+              <Txt size={16} bold>
+                {formatMoney(
+                  direction === "buy" ? m.purchaseTotal : m.saleTotal,
+                  language,
+                )}
+              </Txt>
+            </View>
+          ))}
+        </Row>
+        <Txt muted size={11} style={{ marginTop: 8 }}>
+          {formatDate(m.start, language, gregorian)} · {t("metricsToNow")}
         </Txt>
-      ) : null}
+        <Txt muted size={11}>
+          {t(gregorian ? "metricsGregorian" : "metricsSolar")}
+        </Txt>
+        <Txt muted size={11}>
+          {t("metricsSubtitle")}
+        </Txt>
+      </Disclosure>
     </Card>
   );
 }

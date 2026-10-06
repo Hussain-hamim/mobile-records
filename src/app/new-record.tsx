@@ -232,15 +232,44 @@ export default function NewRecord() {
           />
         }
       />
-      {discarding ? <Card>
-        <Notice message={t("discardDraftHint")} />
-        <Button label={t("discardDraft")} disabled={busy || photoBusy} onPress={() => {
-          completed.current = true; setBusy(true);
-          void saveChain.current.catch(() => {}).then(() => app.discardDraft(draft.id)).then(() => router.back()).catch(e => { completed.current = false; setError(errorText(e,t)); }).finally(() => setBusy(false));
-        }} />
-        <Button secondary label={t("cancel")} disabled={busy} onPress={() => setDiscarding(false)} />
-      </Card> : <Button small secondary label={t("discardDraft")} disabled={busy || photoBusy} onPress={() => setDiscarding(true)} />}
-      <Row style={{ marginBottom: 24 }}>
+      {discarding ? (
+        <Card>
+          <Notice message={t("discardDraftHint")} />
+          <Button
+            variant="destructive"
+            label={t("discardDraft")}
+            disabled={busy || photoBusy}
+            onPress={() => {
+              completed.current = true;
+              setBusy(true);
+              void saveChain.current
+                .catch(() => {})
+                .then(() => app.discardDraft(draft.id))
+                .then(() => router.back())
+                .catch((e) => {
+                  completed.current = false;
+                  setError(errorText(e, t));
+                })
+                .finally(() => setBusy(false));
+            }}
+          />
+          <Button
+            secondary
+            label={t("cancel")}
+            disabled={busy}
+            onPress={() => setDiscarding(false)}
+          />
+        </Card>
+      ) : (
+        <Button
+          small
+          secondary
+          label={t("discardDraft")}
+          disabled={busy || photoBusy}
+          onPress={() => setDiscarding(true)}
+        />
+      )}
+      <Row style={{ marginBottom: 12 }}>
         {(["phoneDetails", "customerDetails"] as const).map((k, i) => (
           <View
             key={k}
@@ -265,7 +294,7 @@ export default function NewRecord() {
       <Notice message={error} tone="error" />
       <Notice message={hint} />
       {app.demo ? (
-        <View style={{ marginBottom: 20, gap: 8 }}>
+        <View style={{ marginBottom: 12, gap: 8 }}>
           <Button
             small
             secondary
@@ -281,7 +310,7 @@ export default function NewRecord() {
       ) : null}
       {draft.step === 0 ? (
         <>
-          <Row style={{ marginBottom: 20 }}>
+          <Row style={{ marginBottom: 12 }}>
             <Chip
               label={t("buy")}
               active={draft.direction === "buy"}
@@ -299,7 +328,7 @@ export default function NewRecord() {
               hint={t("scanIntro")}
               icon="barcode-scan"
             />
-            <Row style={{ marginBottom: 20 }}>
+            <Row style={{ marginBottom: 12 }}>
               <View style={{ flex: 1 }}>
                 <Button
                   icon="barcode-scan"
@@ -431,13 +460,17 @@ export default function NewRecord() {
               onPress={() => setFingerFind(true)}
             />
           </Row>
-          <RecordPhotos
-            tileStyle={recordSectionStyles.photos}
-            recordId={draft.id}
-            direction={draft.direction}
-            editable
-            onBusyChange={setPhotoBusy}
-          />
+          <Card>
+            <Disclosure title={t("attachmentTools")} icon="camera-outline">
+              <RecordPhotos
+                tileStyle={recordSectionStyles.photos}
+                recordId={draft.id}
+                direction={draft.direction}
+                editable
+                onBusyChange={setPhotoBusy}
+              />
+            </Disclosure>
+          </Card>
           {choosing ? (
             <Card>
               {app.customers.map((c) => (
@@ -472,11 +505,11 @@ export default function NewRecord() {
               }}
             />
           ) : null}
-          <View style={{ height: 16 }} />
+          <View style={{ height: 8 }} />
           <Card style={recordSectionStyles.customer}>
-            <Row style={{ marginBottom: 18 }}>
+            <Row style={{ marginBottom: 12 }}>
               <View style={{ flex: 1 }}>
-                <Txt bold size={17}>
+                <Txt bold size={16}>
                   {t("customerDetails")}
                 </Txt>
               </View>
@@ -493,7 +526,7 @@ export default function NewRecord() {
               onChange={(customer) => patch({ customer })}
             />
           </Card>
-          <View style={{ marginTop: 16 }}>
+          <View style={{ marginTop: 12 }}>
             <Txt muted size={12} style={{ marginBottom: 8 }}>
               {t("fingerprintOptional")}
             </Txt>
@@ -552,7 +585,7 @@ export default function NewRecord() {
           />
         </View>
       </Row>
-      <Row style={{ justifyContent: "center", marginTop: 16 }}>
+      <Row style={{ justifyContent: "center", marginTop: 12 }}>
         <Icon name="cloud-check-outline" size={16} color={colors.muted} />
         <Txt size={11} muted>
           {t(app.demo ? "demoDraftHint" : "autoSaved")}

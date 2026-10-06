@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { CustomerEditor } from "../../components/customer-editor";
 import { router, useLocalSearchParams } from "expo-router";
 import { useApp } from "../../state/app-context";
@@ -19,6 +20,7 @@ import { RecordRow } from "../../components/record-row";
 import { View } from "react-native";
 import { formatAuditDate } from "../../domain/format";
 export default function CustomerProfile() {
+  const [showHistory, setShowHistory] = useState(false);
   const app = useApp(),
     { t } = app;
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -45,18 +47,18 @@ export default function CustomerProfile() {
         }
       />
       <Card style={{ backgroundColor: colors.navy, borderColor: colors.navy }}>
-        <Icon name="account-circle-outline" size={48} color={colors.lime} />
-        <Txt bold size={27} color="#fff" style={{ marginTop: 12 }}>
+        <Icon name="account-circle-outline" size={32} color={colors.lime} />
+        <Txt bold size={22} color="#fff" style={{ marginTop: 12 }}>
           {customer.person.name}
         </Txt>
-        <Txt color="#D7DCEB">{customer.person.phone}</Txt>
-        <Txt color="#D7DCEB">{customer.person.idNumber}</Txt>
-        <Txt color={colors.lime} style={{ marginTop: 14 }}>
+        <Txt color={colors.lime} style={{ writingDirection: "ltr" }}>{customer.person.phone}</Txt>
+        <Txt color={colors.lime} style={{ writingDirection: "ltr" }}>{customer.person.idNumber}</Txt>
+        <Txt color={colors.lime} style={{ marginTop: 8 }}>
           {fingerprintsOf(customer).length} / 2 ·{" "}
           {t(fingerprintsOf(customer).length ? "fpEnrolled" : "fpNotEnrolled")}
         </Txt>
       </Card>
-      <Row style={{ marginBottom: 20 }}>
+      <Row style={{ marginBottom: 12 }}>
         {(["buy", "sell"] as const).map((direction) => (
           <View key={direction} style={{ flex: 1 }}>
             <Button
@@ -148,10 +150,20 @@ export default function CustomerProfile() {
         subtitle={`${records.length} ${t("records")}`}
       />
       {records.length ? (
-        records.map((r) => <RecordRow key={r.id} record={r} />)
+        records
+          .slice(0, showHistory ? records.length : 3)
+          .map((r) => <RecordRow key={r.id} record={r} />)
       ) : (
         <Empty title={t("empty")} hint={t("emptyHint")} />
       )}
+      {records.length > 3 ? (
+        <Button
+          secondary
+          small
+          label={t(showHistory ? "close" : "allRecords")}
+          onPress={() => setShowHistory(!showHistory)}
+        />
+      ) : null}
     </Screen>
   );
 }

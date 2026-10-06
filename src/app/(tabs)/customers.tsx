@@ -36,19 +36,26 @@ export default function Customers() {
   const page = usePage(filtered, q);
   return (
     <Screen scroll={false} style={{ paddingBottom: 0 }}>
-      <Heading title={t("customers")} subtitle={t("savedCustomers")} />
-      <SearchField
-        placeholder={t("search")}
-        value={query}
-        onChangeText={setQuery}
-      />
-      <FingerprintSearch onManual={() => {}} />
-      <Txt size={12} muted style={{ marginBottom: 16 }}>
-        {page.items.length === filtered.length
-          ? `${filtered.length} ${t("customers")}`
-          : `${page.items.length} / ${filtered.length} ${t("customers")}`}
-      </Txt>
       <FlatList
+        style={{ flex: 1 }}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: 16 }}
+        ListHeaderComponent={
+          <>
+            <Heading title={t("customers")} subtitle={t("savedCustomers")} />
+            <SearchField
+              placeholder={t("search")}
+              value={query}
+              onChangeText={setQuery}
+            />
+            <FingerprintSearch onManual={() => {}} />
+            <Txt size={12} muted style={{ marginBottom: 8 }}>
+              {page.items.length === filtered.length
+                ? `${filtered.length} ${t("customers")}`
+                : `${page.items.length} / ${filtered.length} ${t("customers")}`}
+            </Txt>
+          </>
+        }
         data={page.items}
         keyExtractor={(c) => c.id}
         renderItem={({ item }) => (
@@ -58,7 +65,7 @@ export default function Customers() {
                 style={{
                   width: 46,
                   height: 46,
-                  borderRadius: 16,
+                  borderRadius: 12,
                   backgroundColor: colors.mint,
                   alignItems: "center",
                   justifyContent: "center",
@@ -72,15 +79,15 @@ export default function Customers() {
                 <Txt bold size={16}>
                   {item.person.name}
                 </Txt>
-                <Txt muted size={12} style={{ marginTop: 3 }}>
+                <Txt muted size={12} style={{ marginTop: 3, writingDirection: "ltr" }}>
                   {item.person.phone}
                 </Txt>
-                <Txt muted size={11} style={{ marginTop: 2 }}>
+                <Txt muted size={11} style={{ marginTop: 2, writingDirection: "ltr" }}>
                   {item.person.idNumber}
                 </Txt>
               </View>
             </Row>
-            <Row style={{ marginTop: 14, gap: 8 }}>
+            <Row style={{ marginTop: 8, gap: 8 }}>
               <View style={{ flex: 1 }}>
                 <Button
                   small

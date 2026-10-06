@@ -1,6 +1,7 @@
 import type { Language } from "../domain/models";
 import { digits } from "../domain/validation";
 const copy = {
+  attachmentTools: ["Photos", "عکسونه", "عکس‌ها"],
   photosStorageTitle: [
     "Photos & storage",
     "عکسونه او ساتنه",
@@ -265,9 +266,19 @@ const copy = {
   idBackPhoto: ["Tazkira back", "د تذکرې شا", "پشت تذکره"],
   photoFromDevice: ["From device", "له موبایل څخه", "از دستگاه"],
   tazkiraPhotoFrameHint: [
-    "Place the Tazkira front inside the corners. Keep every edge visible and hold steady. Only the marked area will be saved.",
-    "د تذکرې مخ د چوکاټ دننه ونیسئ. ټولې څنډې ښکاره او موبایل ثابت وساتئ. یوازې ټاکل شوې برخه ساتل کېږي.",
-    "روی تذکره را داخل گوشه‌های کادر قرار دهید. تمام لبه‌ها دیده شوند و گوشی را ثابت نگه دارید. فقط بخش مشخص‌شده ذخیره می‌شود.",
+    "Fit the entire Tazkira inside the square. Keep all edges visible and avoid glare. Only the area inside the frame is saved.",
+    "ټوله تذکره د مربع چوکاټ دننه ونیسئ. ټولې څنډې ښکاره وساتئ او له ځلا ډډه وکړئ. یوازې د چوکاټ دننه برخه ساتل کېږي.",
+    "تمام تذکره را داخل کادر مربع قرار دهید. همه لبه‌ها دیده شوند و از بازتاب نور جلوگیری کنید. فقط بخش داخل کادر ذخیره می‌شود.",
+  ],
+  personPhotoFrameHint: [
+    "Center the customer's face and shoulders inside the square. Only the area inside the frame is saved.",
+    "د مشتری مخ او اوږې د مربع چوکاټ په منځ کې ونیسئ. یوازې د چوکاټ دننه برخه ساتل کېږي.",
+    "صورت و شانه‌های مشتری را در وسط کادر مربع قرار دهید. فقط بخش داخل کادر ذخیره می‌شود.",
+  ],
+  personPhotoCropReview: [
+    "This is the cropped photo that will be saved. Check that the face is clear, or retake it.",
+    "همدا پرې شوی عکس ساتل کېږي. وګورئ چې مخ روښانه وي، یا بیا عکس واخلئ.",
+    "همین عکس برش‌خورده ذخیره می‌شود. مطمئن شوید صورت واضح است، یا دوباره عکس بگیرید.",
   ],
   photoCropReview: [
     "Check that the whole card is visible and readable before saving. Retake if any edge is missing.",
@@ -730,7 +741,7 @@ const copy = {
 
   owner: ["Owner", "مالک", "مالک"],
   employee: ["Staff", "کارکوونکی", "کارمند"],
-  app: ["Radefy Mobile Registrations App", "د موبایل ثبت", "ثبت موبایل"],
+  app: ["Radefy MobileReg", "Radefy MobileReg", "Radefy MobileReg"],
   tagline: [
     "Every phone. A clear record.",
     "هر موبایل، روښانه ثبت.",

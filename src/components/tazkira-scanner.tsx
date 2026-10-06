@@ -1,3 +1,4 @@
+import { useVisualPreferences } from "./visual-effects";
 import { useEffect, useRef, useState } from "react";
 import { Image, Linking, Modal, Platform, View } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -28,6 +29,7 @@ export function TazkiraScanner({
   onClose: () => void;
   onPerson: (fields: Partial<Person>) => void;
 }) {
+  const { reduceMotion } = useVisualPreferences();
   const { t, membership, demo } = useApp();
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView | null>(null);
@@ -188,7 +190,7 @@ export function TazkiraScanner({
     }
   }
   return (
-    <Modal animationType="slide" onRequestClose={() => void close()}>
+    <Modal animationType={reduceMotion ? "none" : "slide"} onRequestClose={() => void close()}>
       <Screen resetKey={photo ? "result" : "camera"}>
         <Heading
           title={t("scanId")}

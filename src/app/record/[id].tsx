@@ -12,6 +12,7 @@ import {
   Field,
   Icon,
   SectionTitle,
+  Disclosure,
   colors,
   Heading,
   Notice,
@@ -114,10 +115,10 @@ export default function RecordDetail() {
         {t("originalRecord")}
       </Txt>
       <Card style={{ backgroundColor: colors.navy, borderColor: colors.navy }}>
-        <Row style={{ justifyContent: "space-between", marginBottom: 20 }}>
+        <Row style={{ justifyContent: "space-between", marginBottom: 12 }}>
           <View
             style={{
-              backgroundColor: "#41455F",
+              backgroundColor: "#FFFFFF18",
               padding: 12,
               borderRadius: 16,
             }}
@@ -125,7 +126,7 @@ export default function RecordDetail() {
             <Icon name="cellphone-check" color={colors.lime} size={29} />
           </View>
           <View>
-            <Txt size={12} color="#D6DAEF">
+            <Txt size={12} color={colors.lime}>
               {t(record.direction === "buy" ? "bought" : "sold")}
             </Txt>
             <Txt size={11} color={colors.lime}>
@@ -133,39 +134,40 @@ export default function RecordDetail() {
             </Txt>
           </View>
         </Row>
-        <Txt bold size={26} color="#fff">
+        <Txt bold size={22} color="#fff">
           {record.phone.brand} {record.phone.model}
         </Txt>
-        <Txt size={30} bold color={colors.lime} style={{ marginTop: 8 }}>
+        <Txt size={24} bold color={colors.lime} style={{ marginTop: 8 }}>
           {formatMoney(record.price, app.language)}
         </Txt>
       </Card>
       <Card>
-        <SectionTitle title={t("phoneDetails")} icon="cellphone" />
-        {Object.entries(record.phone)
-          .filter(([k, v]) => v && k !== "brand" && k !== "model")
-          .map(([k, v]) => (
-            <Row
-              key={k}
-              style={{ justifyContent: "space-between", marginTop: 9 }}
-            >
-              <Txt size={12} muted>
-                {t(k as keyof typeof record.phone)}
-              </Txt>
-              <View style={{ flex: 1 }}>
-                <Txt
-                  size={13}
-                  style={
-                    k.startsWith("imei")
-                      ? { writingDirection: "ltr" }
-                      : undefined
-                  }
-                >
-                  {v}
+        <Disclosure title={t("phoneDetails")} icon="cellphone">
+          {Object.entries(record.phone)
+            .filter(([k, v]) => v && k !== "brand" && k !== "model")
+            .map(([k, v]) => (
+              <Row
+                key={k}
+                style={{ justifyContent: "space-between", marginTop: 9 }}
+              >
+                <Txt size={12} muted>
+                  {t(k as keyof typeof record.phone)}
                 </Txt>
-              </View>
-            </Row>
-          ))}
+                <View style={{ flex: 1 }}>
+                  <Txt
+                    size={13}
+                    style={
+                      k.startsWith("imei")
+                        ? { writingDirection: "ltr" }
+                        : undefined
+                    }
+                  >
+                    {v}
+                  </Txt>
+                </View>
+              </Row>
+            ))}
+        </Disclosure>
       </Card>
       <Card>
         <SectionTitle title={t("customerDetails")} icon="account-outline" />
@@ -175,18 +177,22 @@ export default function RecordDetail() {
           editable={app.membership?.role === "owner" && !voided}
           savedRecord={record}
         />
-        {Object.entries(record.customer)
-          .filter(([, v]) => v)
-          .map(([k, v]) => (
-            <View key={k} style={{ marginTop: 8 }}>
-              <Txt muted size={11}>
-                {t(k as keyof typeof record.customer)}
-              </Txt>
-              <Txt size={14}>
-                {k === "idType" ? t(v === "pnid" ? "pnid" : "enid") : v}
-              </Txt>
-            </View>
-          ))}
+        <Txt bold>{record.customer.name}</Txt>
+        <Txt muted style={{ writingDirection: "ltr" }}>{record.customer.phone}</Txt>
+        <Disclosure title={t("moreDetails")} icon="account-details-outline">
+          {Object.entries(record.customer)
+            .filter(([, v]) => v)
+            .map(([k, v]) => (
+              <View key={k} style={{ marginTop: 8 }}>
+                <Txt muted size={11}>
+                  {t(k as keyof typeof record.customer)}
+                </Txt>
+                <Txt size={14}>
+                  {k === "idType" ? t(v === "pnid" ? "pnid" : "enid") : v}
+                </Txt>
+              </View>
+            ))}
+        </Disclosure>
       </Card>
       <Row style={{ flexWrap: "wrap", marginBottom: 12 }}>
         <Chip
@@ -263,103 +269,104 @@ export default function RecordDetail() {
       <View style={{ height: 22 }} />
       {corrections.length ? (
         <Card>
-          <Txt bold>{t("amendments")}</Txt>
-          {corrections.map((a, index) => (
-            <View key={a.id} style={{ marginTop: 15 }}>
-              <Txt bold>
-                {t(
-                  a.kind === "void"
-                    ? "recordVoided"
-                    : a.kind === "photo"
-                      ? "photoChange"
-                      : "correction",
-                )}
-              </Txt>
-              <Txt>{a.reason}</Txt>
-              {!a.kind || a.kind === "correction" ? (
-                <RecordChanges
-                  before={
-                    corrections
-                      .slice(0, index)
-                      .filter((c) => !c.kind || c.kind === "correction")
-                      .at(-1)?.snapshot ?? record
-                  }
-                  after={a.snapshot}
-                />
-              ) : null}
-              <Txt muted size={12}>
-                {t("changedBy")}: {a.createdBy}
-              </Txt>
-              {a.kind === "photo" && a.photoChange ? (
-                <Txt size={12}>
+          <Disclosure title={t("amendments")} icon="history">
+            {corrections.map((a, index) => (
+              <View key={a.id} style={{ marginTop: 15 }}>
+                <Txt bold>
                   {t(
-                    a.photoChange.slot === "person"
-                      ? "sellerPhoto"
-                      : "idFrontPhoto",
-                  )}{" "}
-                  ·{" "}
-                  {t(
-                    a.photoChange.action === "remove"
-                      ? "removePhoto"
-                      : a.photoChange.action === "adjust"
-                        ? "adjustView"
-                        : "replacePhoto",
+                    a.kind === "void"
+                      ? "recordVoided"
+                      : a.kind === "photo"
+                        ? "photoChange"
+                        : "correction",
                   )}
                 </Txt>
-              ) : null}
-              <Txt muted size={11}>
-                {formatAuditDate(a.createdAt, app.language, app.gregorian)}
-              </Txt>
-              {!a.kind || a.kind === "correction" ? (
-                <>
-                  <Button
-                    small
-                    secondary
-                    label={t("print")}
-                    disabled={busy}
-                    onPress={() =>
-                      void run(() =>
-                        printRecord(
-                          a.snapshot,
-                          app.language,
-                          app.gregorian,
-                          false,
-                          voided
-                            ? `${t("recordVoided")} · ${a.reason}`
-                            : a.reason,
-                          receiptContext(a.snapshot),
-                        ),
-                      )
+                <Txt>{a.reason}</Txt>
+                {!a.kind || a.kind === "correction" ? (
+                  <RecordChanges
+                    before={
+                      corrections
+                        .slice(0, index)
+                        .filter((c) => !c.kind || c.kind === "correction")
+                        .at(-1)?.snapshot ?? record
                     }
+                    after={a.snapshot}
                   />
-                  <View style={{ marginTop: 8 }}>
+                ) : null}
+                <Txt muted size={12}>
+                  {t("changedBy")}: {a.createdBy}
+                </Txt>
+                {a.kind === "photo" && a.photoChange ? (
+                  <Txt size={12}>
+                    {t(
+                      a.photoChange.slot === "person"
+                        ? "sellerPhoto"
+                        : "idFrontPhoto",
+                    )}{" "}
+                    ·{" "}
+                    {t(
+                      a.photoChange.action === "remove"
+                        ? "removePhoto"
+                        : a.photoChange.action === "adjust"
+                          ? "adjustView"
+                          : "replacePhoto",
+                    )}
+                  </Txt>
+                ) : null}
+                <Txt muted size={11}>
+                  {formatAuditDate(a.createdAt, app.language, app.gregorian)}
+                </Txt>
+                {!a.kind || a.kind === "correction" ? (
+                  <>
                     <Button
                       small
                       secondary
-                      icon="image-outline"
-                      label={t("savePicture")}
+                      label={t("print")}
                       disabled={busy}
                       onPress={() =>
-                        void run(async () => {
-                          const result = await saveFormImage(
+                        void run(() =>
+                          printRecord(
                             a.snapshot,
                             app.language,
                             app.gregorian,
+                            false,
                             voided
                               ? `${t("recordVoided")} · ${a.reason}`
                               : a.reason,
-                            setPicture,
                             receiptContext(a.snapshot),
-                          );
-                          if (result) setMessage(t(result));
-                        })
+                          ),
+                        )
                       }
                     />
-                  </View>
-                </>
-              ) : null}
-            </View>
-          ))}
+                    <View style={{ marginTop: 8 }}>
+                      <Button
+                        small
+                        secondary
+                        icon="image-outline"
+                        label={t("savePicture")}
+                        disabled={busy}
+                        onPress={() =>
+                          void run(async () => {
+                            const result = await saveFormImage(
+                              a.snapshot,
+                              app.language,
+                              app.gregorian,
+                              voided
+                                ? `${t("recordVoided")} · ${a.reason}`
+                                : a.reason,
+                              setPicture,
+                              receiptContext(a.snapshot),
+                            );
+                            if (result) setMessage(t(result));
+                          })
+                        }
+                      />
+                    </View>
+                  </>
+                ) : null}
+              </View>
+            ))}
+          </Disclosure>
         </Card>
       ) : null}
       {app.membership?.role === "owner" && !edit && !voided && !voiding ? (

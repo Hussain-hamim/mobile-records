@@ -65,8 +65,8 @@ export default function Settings() {
           <View
             style={{
               padding: 13,
-              backgroundColor: "#41455F",
-              borderRadius: 17,
+              backgroundColor: "#FFFFFF18",
+              borderRadius: 12,
             }}
           >
             <Icon name="storefront-outline" color={colors.lime} size={28} />
@@ -75,7 +75,7 @@ export default function Settings() {
             <Txt size={20} bold color="#fff">
               {profile.shopName}
             </Txt>
-            <Txt size={12} color="#B7BCD5">
+            <Txt size={12} color={colors.lime}>
               {t(app.membership?.role === "owner" ? "owner" : "employee")}
               {app.demo ? ` · ${t("demoMode")}` : ""}
             </Txt>

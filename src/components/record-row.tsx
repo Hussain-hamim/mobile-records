@@ -41,7 +41,7 @@ export function RecordRow({ record }: { record: Transaction }) {
             <Txt muted size={12}>
               {record.customer.name}
             </Txt>
-            <Row style={{ gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+            <Row style={{ gap: 8, marginTop: 4, flexWrap: "wrap" }}>
               <View style={[styles.badge, { backgroundColor: soft }]}>
                 <Txt size={10} bold color={accent}>
                   {t(amendments.some(a => a.recordId === record.id && a.kind === "void") ? "recordVoided" : buy ? "bought" : "sold")}
@@ -59,7 +59,7 @@ export function RecordRow({ record }: { record: Transaction }) {
             <Icon
               name={rtl ? "chevron-left" : "chevron-right"}
               size={18}
-              color="#A1A5B8"
+              color={colors.muted}
             />
           </View>
         </Row>
@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
     marginBottom: 10,
-    borderRadius: 18,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.line,
     overflow: "hidden",
@@ -82,13 +82,13 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: 10,
     paddingHorizontal: 12,
   },
   icon: {
-    width: 42,
-    height: 42,
-    borderRadius: 13,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },

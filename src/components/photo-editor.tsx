@@ -111,7 +111,7 @@ export function PhotoEditor({
               width: `${box.size * 100}%`,
               height: `${box.size * 100}%`,
               borderWidth: 3,
-              borderColor: "#4F54E8",
+              borderColor: "#25694E",
             }}
           />
         </View>

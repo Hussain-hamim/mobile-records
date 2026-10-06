@@ -3,10 +3,15 @@ import { Stack, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { AppLoadingScreen } from "../components/app-loading-screen";
 import { AuthScreen } from "../components/auth-screen";
+import {
+  VisualPreferences,
+  useVisualPreferences,
+} from "../components/visual-effects";
 import { colors } from "../components/ui";
 import { AppProvider, useApp } from "../state/app-context";
 function Routes() {
   const { phase } = useApp();
+  const { reduceMotion } = useVisualPreferences();
   return (
     <>
       <StatusBar style="dark" />
@@ -15,6 +20,7 @@ function Routes() {
       ) : phase === "ready" ? (
         <Stack
           screenOptions={{
+            animation: reduceMotion ? "none" : "default",
             headerShown: false,
             contentStyle: { backgroundColor: colors.bg },
           }}
@@ -48,7 +54,9 @@ export default function Layout() {
   }
   return (
     <AppProvider>
-      <Routes />
+      <VisualPreferences>
+        <Routes />
+      </VisualPreferences>
     </AppProvider>
   );
 }

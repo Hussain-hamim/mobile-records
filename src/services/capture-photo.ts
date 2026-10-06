@@ -1,12 +1,12 @@
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
-import { tazkiraPhotoCrop } from "../domain/photo-frame";
+import { recordPhotoCrop } from "../domain/photo-frame";
 
-/** Local attachment crop only; never invokes scanning or sends an image. */
-export async function cropCardPhoto(
+/** Square attachment crop only; never invokes scanning or sends an image. */
+export async function cropRecordPhoto(
   photo: { uri: string; width: number; height: number },
   preview: { width: number; height: number },
 ) {
-  const crop = tazkiraPhotoCrop(photo, preview);
+  const crop = recordPhotoCrop(photo, preview);
   const context = ImageManipulator.manipulate(photo.uri);
   try {
     context.crop(crop);

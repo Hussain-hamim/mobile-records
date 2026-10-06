@@ -1,3 +1,7 @@
+import {
+  ModalBackdrop,
+  useVisualPreferences,
+} from "../../components/visual-effects";
 import { DateTimePicker } from "@expo/ui/community/datetime-picker";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
@@ -40,6 +44,7 @@ function dateFromDay(day: string) {
 
 export default function Records() {
   const { records, t, language, gregorian } = useApp();
+  const { reduceMotion } = useVisualPreferences();
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState("all");
   const [date, setDate] = useState("");
@@ -97,7 +102,7 @@ export default function Records() {
               onChangeText={setQuery}
             />
             <FingerprintSearch />
-            <Row style={{ marginBottom: 15 }}>
+            <Row style={{ marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
               {(["all", "buy", "sell"] as const).map((k) => (
                 <Chip
                   key={k}
@@ -130,9 +135,6 @@ export default function Records() {
                         )
                       : t("filters")}
                   </Txt>
-                  <Txt size={12} muted>
-                    {t("date")}
-                  </Txt>
                 </View>
                 {date ? (
                   <Pressable
@@ -149,7 +151,7 @@ export default function Records() {
                     <Icon name="close-circle" size={22} color={colors.muted} />
                   </Pressable>
                 ) : (
-                  <Icon name="chevron-down" size={20} color="#A1A5B8" />
+                  <Icon name="chevron-down" size={20} color={colors.muted} />
                 )}
               </Row>
             </Pressable>
@@ -197,11 +199,12 @@ export default function Records() {
       {picking && Platform.OS !== "android" ? (
         <Modal
           transparent
-          animationType="fade"
+          animationType={reduceMotion ? "none" : "fade"}
           visible={picking}
           onRequestClose={() => setPicking(false)}
         >
           <Pressable style={styles.backdrop} onPress={() => setPicking(false)}>
+            <ModalBackdrop />
             <Pressable
               style={styles.sheet}
               onPress={(e) => e.stopPropagation()}
@@ -265,26 +268,26 @@ const styles = StyleSheet.create({
   dateButton: {
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 16,
+    borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    minHeight: 56,
+    paddingVertical: 6,
+    minHeight: 48,
     justifyContent: "center",
   },
   dateIcon: {
-    padding: 10,
+    padding: 6,
     borderRadius: 13,
     backgroundColor: colors.mint,
   },
   backdrop: {
     flex: 1,
-    backgroundColor: "#20233D66",
+    backgroundColor: "transparent",
     justifyContent: "center",
-    padding: 22,
+    padding: 16,
   },
   sheet: {
     backgroundColor: colors.paper,
-    borderRadius: 24,
+    borderRadius: 12,
     padding: 18,
     borderWidth: 1,
     borderColor: colors.line,
