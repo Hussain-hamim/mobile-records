@@ -4,17 +4,16 @@
     "slug": "mobile-records",
     "version": "1.0.3",
     "orientation": "portrait",
-    "icon": "./assets/Radefy Systems - Logo Variations by Alif Design-04.png",
+    "icon": "./assets/images/mobilereg-icon.png",
     "scheme": "mobilerecords",
     "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/Radefy Systems - Logo Variations by Alif Design-04.png"
+      "icon": "./assets/images/mobilereg-icon.png"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/Radefy Systems - Logo Variations by Alif Design-04.png",
-        "backgroundColor": "#F6F8F5",
-        "monochromeImage": "./assets/Radefy Systems - Logo Variations by Alif Design-04.png"
+        "foregroundImage": "./assets/images/mobilereg-icon-adaptive.png",
+        "backgroundColor": "#19372F"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.radefy.mobilerecords",
@@ -33,7 +32,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/Radefy Systems - Logo Variations by Alif Design-04.png"
+      "favicon": "./assets/images/mobilereg-icon.png"
     },
     "plugins": [
       "expo-router",
@@ -49,8 +48,8 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#F6F8F5",
-          "image": "./assets/Radefy Systems - Logo Variations by Alif Design-04.png",
+          "backgroundColor": "#19372F",
+          "image": "./assets/images/mobilereg-icon.png",
           "imageWidth": 160
         }
       ],

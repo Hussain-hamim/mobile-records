@@ -22,15 +22,11 @@ import {
   Txt,
   errorText,
 } from "../../components/ui";
-import { PersonFields } from "../../components/person-fields";
 export default function Settings() {
   const app = useApp();
   const { t } = app;
   const [reader, setReader] = useState(false);
-  const [profile, setProfile] = useState(() => ({
-    ...emptyShop(),
-    ...app.membership?.profile,
-  }));
+  const profile = app.membership?.profile ?? emptyShop();
   const [phone, setPhone] = useState("");
   const [staff, setStaff] = useState<
     { user_id: string; phone: string; role: string; active: boolean }[]
@@ -128,45 +124,12 @@ export default function Settings() {
         </Row>
       </Card>
       <Card>
-        <Disclosure
-          title={t("shopDetails")}
-          hint={t("shopHint")}
+        <Button
+          secondary
           icon="storefront-outline"
-        >
-          {app.membership?.role === "owner" ? (
-            <>
-              {(
-                ["shopName", "licenceNumber", "shopNumber", "address"] as const
-              ).map((k) => (
-                <Field
-                  key={k}
-                  label={t(k)}
-                  value={profile[k]}
-                  onChangeText={(v) => setProfile({ ...profile, [k]: v })}
-                />
-              ))}
-              <PersonFields
-                value={profile}
-                onChange={(p) => setProfile({ ...profile, ...p })}
-              />
-              <Button
-                label={t("save")}
-                loading={busy}
-                onPress={() =>
-                  void run(async () => {
-                    await app.saveProfile(profile);
-                    setMessage(t("saved"));
-                  })
-                }
-              />
-            </>
-          ) : (
-            <>
-              <Txt>{profile.shopName}</Txt>
-              <Txt>{profile.address}</Txt>
-            </>
-          )}
-        </Disclosure>
+          label={t("shopDetails")}
+          onPress={() => router.push("/shop-profile")}
+        />
       </Card>
       <Card>
         <Disclosure

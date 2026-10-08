@@ -8,6 +8,8 @@ import { PersonFields } from "../components/person-fields";
 import { RecordPhotos } from "../components/record-photos";
 import { recordSectionStyles } from "../components/record-section-styles";
 import { Scanner } from "../components/scanner";
+import { ShopProfileNotice } from "../components/shop-profile-notice";
+import { isShopProfileComplete } from "../domain/shop-profile";
 import {
   Button,
   Card,
@@ -199,6 +201,10 @@ export default function NewRecord() {
   }
   async function finish() {
     if (photoBusy) return;
+    if (!isShopProfileComplete(app.membership?.profile)) {
+      setError(t("shopRequired"));
+      return;
+    }
     setBusy(true);
     setError("");
     const ready = { ...latest.current, customerConfirmed: true };
@@ -232,6 +238,7 @@ export default function NewRecord() {
           />
         }
       />
+      <ShopProfileNotice />
       {discarding ? (
         <Card>
           <Notice message={t("discardDraftHint")} />
@@ -573,6 +580,7 @@ export default function NewRecord() {
         <View style={{ flex: 1 }}>
           <Button
             label={t(draft.step === 0 ? "next" : "saveRecord")}
+            disabled={draft.step > 0 && !isShopProfileComplete(app.membership?.profile)}
             loading={busy}
             icon={
               draft.step === 0

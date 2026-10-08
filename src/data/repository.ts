@@ -10,6 +10,7 @@ import type {
   Person,
 } from "../domain/models";
 import type { Vault } from "./vault";
+import { isShopProfileComplete } from "../domain/shop-profile";
 import {
   digits,
   normalizeImei,
@@ -208,11 +209,7 @@ export class Repository {
   private async writeFinalized(draft: Draft) {
     const errors = validateDraft(draft);
     if (errors.length) throw new Error(errors[0]);
-    if (
-      !this.membership.profile.shopName ||
-      !this.membership.profile.name ||
-      !this.membership.profile.address
-    )
+    if (!isShopProfileComplete(this.membership.profile))
       throw new Error("shopRequired");
     // Draft ID is the record ID: repeat taps/recovery cannot create a second record.
     const prior = await this.vault.get<Transaction>("record:" + draft.id);

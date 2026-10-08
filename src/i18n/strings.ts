@@ -1,6 +1,18 @@
 import type { Language } from "../domain/models";
 import { digits } from "../domain/validation";
 const copy = {
+  choosePhoneCountry: ["Choose country", "هېواد وټاکئ", "انتخاب کشور"],
+  searchPhoneCountry: [
+    "Search country or dialing code",
+    "هېواد یا د اړیکې کوډ ولټوئ",
+    "جستجوی کشور یا کد تماس",
+  ],
+  nationalPhone: ["Phone number", "د اړیکې شمېره", "شماره تلفن"],
+  noPhoneCountries: [
+    "No countries found. Try a name or dialing code.",
+    "هېواد ونه موندل شو. نوم یا د اړیکې کوډ ولیکئ.",
+    "کشوری پیدا نشد. نام یا کد تماس را وارد کنید.",
+  ],
   attachmentTools: ["Photos", "عکسونه", "عکس‌ها"],
   photosStorageTitle: [
     "Photos & storage",
@@ -825,6 +837,12 @@ const copy = {
   shopNumber: ["Shop number", "د دوکان شمېره", "شماره دکان"],
   address: ["Shop address", "د دوکان پته", "آدرس دکان"],
   shopDetails: ["Shop profile", "د دوکان معلومات", "مشخصات دکان"],
+  completeShopProfile: ["Complete shop profile", "د دوکان معلومات بشپړ کړئ", "مشخصات دکان را تکمیل کنید"],
+  shopOwnerRequired: [
+    "Ask the shop owner to complete the shop name, owner name and address before saving records.",
+    "د ثبتونو له خوندي کولو مخکې له مالک څخه وغواړئ چې د دوکان نوم، د مالک نوم او پته بشپړ کړي.",
+    "پیش از ذخیره اسناد، از مالک بخواهید نام دکان، نام مالک و آدرس را تکمیل کند.",
+  ],
   shopHint: [
     "Saved once. Filled into every new record.",
     "یو ځل خوندي، په هر نوي ثبت کې کارول کېږي.",
@@ -842,9 +860,9 @@ const copy = {
   signOut: ["Sign out", "وتل", "خروج"],
   signIn: ["Sign in", "ننوتل", "ورود"],
   loginCode: [
-    "One-time login code",
-    "د ننوتلو یوځلي کوډ",
-    "کد یک‌بار مصرف ورود",
+    "Activation code",
+    "د فعالولو کوډ",
+    "کد فعال‌سازی",
   ],
   loginCodeHint: [
     "Enter the 8-digit code provided by your administrator. No SMS is sent.",
@@ -887,8 +905,8 @@ const copy = {
     "برای دکان‌ها و کارکنان دعوت‌شده",
   ],
   recovery: [
-    "Need a new code? Contact your administrator.",
-    "نوی کوډ ته اړتیا لرئ؟ له مدیر سره اړیکه ونیسئ.",
+    "Need a new code? Contact admin.",
+    "نوي کوډ ته اړتیا لرئ؟ له مدیر سره اړیکه ونیسئ.",
     "کد جدید نیاز دارید؟ با مدیر تماس بگیرید.",
   ],
   androidSignIn: [

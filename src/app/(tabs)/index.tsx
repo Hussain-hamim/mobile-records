@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Image, Pressable, StyleSheet, View } from "react-native";
 import { FingerprintPrompt } from "../../components/fingerprint-prompt";
 import { HomeInsights } from "../../components/home-insights";
+import { ShopProfileNotice } from "../../components/shop-profile-notice";
 import { RecordRow } from "../../components/record-row";
 import {
   Button,
@@ -35,8 +36,8 @@ export default function Home() {
         }}
       >
         <Image
-          source={require("../../../assets/Radefy Systems - Logo Variations by Alif Design-04.png")}
-          accessibilityLabel="Radefy Systems"
+          source={require("../../../assets/images/mobilereg-logo-transparent.png")}
+          accessibilityLabel="Radefy MobileReg"
           resizeMode="contain"
           style={{ width: 40, height: 40 }}
         />
@@ -73,6 +74,7 @@ export default function Home() {
       <Txt size={12} muted style={{ marginBottom: 12 }}>
         {t("nextDeal")}
       </Txt>
+      <ShopProfileNotice />
       <Row style={{ gap: 12, alignItems: "stretch", marginBottom: 12 }}>
         {(["buy", "sell"] as const).map((direction) => {
           const buy = direction === "buy";

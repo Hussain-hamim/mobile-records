@@ -31,6 +31,7 @@ function Routes() {
           <Stack.Screen name="customer/[id]" />
           <Stack.Screen name="support" />
           <Stack.Screen name="photos-storage" />
+          <Stack.Screen name="shop-profile" />
         </Stack>
       ) : (
         <AuthScreen />

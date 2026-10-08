@@ -9,8 +9,8 @@ export function AppLoadingScreen() {
     <Screen ambient scroll={false} style={styles.screen}>
       <View style={styles.logo}>
         <Image
-          source={require("../../assets/Radefy Systems - Logo Variations by Alif Design-04.png")}
-          accessibilityLabel="Radefy Systems"
+          source={require("../../assets/images/mobilereg-icon.png")}
+          accessibilityLabel="Radefy MobileReg"
           resizeMode="contain"
           style={styles.image}
         />
@@ -35,12 +35,12 @@ export function AppLoadingScreen() {
 const styles = StyleSheet.create({
   screen: { alignItems: "center", justifyContent: "center" },
   logo: {
-    backgroundColor: colors.paper,
+    backgroundColor: "#19372F",
     borderRadius: 28,
-    padding: 12,
+    overflow: "hidden",
     marginBottom: 12,
   },
-  image: { width: 88, height: 88 },
+  image: { width: 112, height: 112 },
   title: { textAlign: "center" },
   spinner: { marginTop: 32, marginBottom: 16 },
 });
