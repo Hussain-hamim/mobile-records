@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useShopQuery } from "../../state/use-shop-query";
+import { useServerPage } from "../../state/use-server-page";
+import type { RecordCursor } from "../../data/shop-queries";
+import { PageFeedback } from "../../components/page-feedback";
 import { CustomerEditor } from "../../components/customer-editor";
 import { router, useLocalSearchParams } from "expo-router";
 import { useApp } from "../../state/app-context";
@@ -20,17 +23,19 @@ import { RecordRow } from "../../components/record-row";
 import { View } from "react-native";
 import { formatAuditDate } from "../../domain/format";
 export default function CustomerProfile() {
-  const [showHistory, setShowHistory] = useState(false);
   const app = useApp(),
     { t } = app;
   const { id } = useLocalSearchParams<{ id: string }>();
-  const customer = app.customers.find((c) => c.id === id);
-  const records = app.records.filter((r) => r.customerId === id);
+  const key = `${app.membership?.shopId}:${app.dataVersion}:${id}`;
+  const detail = useShopQuery(() => app.queries!.customer(id), key, !!app.queries && !!id);
+  const page = useServerPage((cursor: RecordCursor | null, signal) => app.queries!.records({customerId:id},cursor,signal), key, !!app.queries && !!id,0);
+  const customer = detail.value;
+  const records = page.items;
   if (!customer)
     return (
       <Screen>
         <Button label={t("back")} onPress={() => router.back()} />
-        <Empty title={t("customers")} hint={t("empty")} />
+        <PageFeedback {...detail} onRetry={detail.retry}/>{!detail.loading && !detail.error ? <Empty title={t("customers")} hint={t("empty")} /> : null}
       </Screen>
     );
   return (
@@ -147,23 +152,14 @@ export default function CustomerProfile() {
       ) : null}
       <Heading
         title={t("customerHistory")}
-        subtitle={`${records.length} ${t("records")}`}
+        subtitle={`${records.length}${page.hasMore ? "+" : ""} ${t("records")}`}
       />
       {records.length ? (
-        records
-          .slice(0, showHistory ? records.length : 3)
-          .map((r) => <RecordRow key={r.id} record={r} />)
+        records.map((r) => <RecordRow key={r.id} record={r} />)
       ) : (
-        <Empty title={t("empty")} hint={t("emptyHint")} />
+        !page.loading && !page.error ? <Empty title={t("empty")} hint={t("emptyHint")} /> : null
       )}
-      {records.length > 3 ? (
-        <Button
-          secondary
-          small
-          label={t(showHistory ? "close" : "allRecords")}
-          onPress={() => setShowHistory(!showHistory)}
-        />
-      ) : null}
+      <PageFeedback {...page} onMore={page.loadMore} onRetry={page.retry}/>
     </Screen>
   );
 }

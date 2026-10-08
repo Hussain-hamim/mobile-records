@@ -1,6 +1,109 @@
 import type { Language } from "../domain/models";
 import { digits } from "../domain/validation";
 const copy = {
+  previousShopFullDetails: [
+    "View details",
+    "بشپړ معلومات وګورئ",
+    "مشاهده جزئیات کامل",
+  ],
+  previousShopHideDetails: [
+    "Hide details",
+    "معلومات پټ کړئ",
+    "پنهان کردن جزئیات",
+  ],
+  previousShopDemoShort: [
+    "Demo · Fictional history",
+    "ازمایښتي · خیالي مخینه",
+    "آزمایشی · سابقه فرضی",
+  ],
+  previousShopDemo: [
+    "Demo preview: fictional shop details. No live lookup or phone calls.",
+    "ازمایښتي لید: د دوکان معلومات خیالي دي. ژوندی لټون یا زنګ نه کېږي.",
+    "نمایش آزمایشی: اطلاعات دکان فرضی است. جستجوی واقعی یا تماس انجام نمی‌شود.",
+  ],
+  previousShopDemoHistory: ["Sample history", "ازمایښتي مخینه", "سابقه نمونه"],
+  previousShopDemoDifferent: [
+    "Different shops",
+    "بېلابېل دوکانونه",
+    "دکان‌های متفاوت",
+  ],
+  previousShopRetry: ["Try again", "بیا هڅه وکړئ", "دوباره تلاش کنید"],
+  previousShopTitle: [
+    "Last recorded shop",
+    "وروستی ثبت شوی دوکان",
+    "آخرین دکان ثبت‌شده",
+  ],
+  previousShopCheck: [
+    "Check previous shop",
+    "پخوانی دوکان وګورئ",
+    "بررسی دکان قبلی",
+  ],
+  previousShopLoading: [
+    "Checking shared history…",
+    "شریکه مخینه کتل کېږي…",
+    "در حال بررسی سابقه مشترک…",
+  ],
+  previousShopDisabled: [
+    "Previous-shop lookup is turned off by the administrator.",
+    "د پخواني دوکان لټون د ادارې له خوا بند دی.",
+    "جستجوی دکان قبلی توسط مدیر غیرفعال است.",
+  ],
+  previousShopEmpty: [
+    "No shared history found",
+    "شریکه مخینه ونه موندل شوه",
+    "سابقه مشترکی پیدا نشد",
+  ],
+  previousShopOffline: [
+    "Connect to the internet, then try again.",
+    "له انټرنېټ سره وصل شئ او بیا هڅه وکړئ.",
+    "به انترنت وصل شوید و دوباره تلاش کنید.",
+  ],
+  previousShopUnavailable: [
+    "Previous-shop lookup is unavailable. Please try again.",
+    "د پخواني دوکان لټون اوس نشته. بیا هڅه وکړئ.",
+    "جستجوی دکان قبلی در دسترس نیست. دوباره تلاش کنید.",
+  ],
+  previousShopRateLimited: [
+    "Too many lookups. Wait one minute and try again.",
+    "ډېرې پلټنې وشوې. یوه دقیقه وروسته بیا هڅه وکړئ.",
+    "تعداد جستجوها زیاد است. یک دقیقه بعد دوباره تلاش کنید.",
+  ],
+  previousShopBought: [
+    "Shop recorded a purchase",
+    "دوکان پېرود ثبت کړی",
+    "دکان خرید ثبت کرده است",
+  ],
+  previousShopSold: [
+    "Shop recorded a sale",
+    "دوکان پلور ثبت کړی",
+    "دکان فروش ثبت کرده است",
+  ],
+  previousShopCall: ["Call shop", "دوکان ته زنګ ووهئ", "تماس با دکان"],
+  previousShopNoPhone: [
+    "Business phone not provided",
+    "د دوکان د اړیکې شمېره نشته",
+    "شماره تماس دکان موجود نیست",
+  ],
+  previousShopNoAddress: [
+    "Shop address not provided",
+    "د دوکان پته نشته",
+    "آدرس دکان موجود نیست",
+  ],
+  previousShopUnnamed: [
+    "Shop name not provided",
+    "د دوکان نوم نشته",
+    "نام دکان موجود نیست",
+  ],
+  previousShopCallFailed: [
+    "Could not open the phone app. Dial the displayed number manually.",
+    "د زنګ اپ خلاص نه شو. ښودل شوې شمېرې ته زنګ ووهئ.",
+    "برنامه تماس باز نشد. شماره نمایش‌داده‌شده را دستی وارد کنید.",
+  ],
+  previousShopDisclaimer: [
+    "Recorded activity only, not verified ownership. Missing history does not confirm a clean ownership history.",
+    "یوازې ثبت شوي فعالیتونه دي، د مالکیت تایید نه دی. د مخینې نشتوالی د مالکیت د پاکې مخینې ثبوت نه دی.",
+    "فقط فعالیت ثبت‌شده است، نه تأیید مالکیت. نبود سابقه، پاک بودن سابقه مالکیت را ثابت نمی‌کند.",
+  ],
   choosePhoneCountry: ["Choose country", "هېواد وټاکئ", "انتخاب کشور"],
   searchPhoneCountry: [
     "Search country or dialing code",
@@ -731,6 +834,7 @@ const copy = {
     "همه معاملات، همین‌جا.",
   ],
   filters: ["Filter by date", "د نېټې له مخې چاڼ", "فیلتر براساس تاریخ"],
+  retryLoad: ["Try again", "بیا هڅه وکړئ", "دوباره تلاش کنید"],
   loadMore: ["Load more", "نور ښکاره کړئ", "بیشتر"],
   cloudRefreshFailed: [
     "Saved to Supabase. Refresh to load the latest records.",
@@ -789,6 +893,25 @@ const copy = {
   ],
   phoneDetails: ["Phone details", "د موبایل معلومات", "مشخصات موبایل"],
   customerDetails: ["Customer details", "د پېرودونکي معلومات", "مشخصات مشتری"],
+  recordReceipt: ["Receipt", "رسید", "رسید"],
+  recordFormLayout: ["Receipt layout", "د رسید بڼه", "قالب رسید"],
+  recordPhotos: ["Photos & documents", "عکسونه او اسناد", "عکس‌ها و اسناد"],
+  recordPhotosHint: [
+    "Customer photo and Tazkira",
+    "د پېرودونکي عکس او تذکره",
+    "عکس مشتری و تذکره",
+  ],
+  recordManage: ["Manage record", "د ثبت سمبالول", "مدیریت ثبت"],
+  recordOriginalHint: [
+    "This is the original record. View corrections in the history below.",
+    "دا اصلي ثبت دی. سمونونه لاندې په تاریخچه کې وګورئ.",
+    "این ثبت اصلی است. اصلاحات را در تاریخچه پایین ببینید.",
+  ],
+  recordHistoryHint: [
+    "View changes and corrected receipts",
+    "بدلونونه او سم شوي رسیدونه وګورئ",
+    "مشاهده تغییرات و رسیدهای اصلاح‌شده",
+  ],
   review: ["Review", "بیاکتنه", "بازبینی"],
   save: ["Save", "خوندي کول", "ذخیره"],
   saveRecord: ["Save record", "ثبت خوندي کړئ", "ذخیره ثبت"],
@@ -837,7 +960,11 @@ const copy = {
   shopNumber: ["Shop number", "د دوکان شمېره", "شماره دکان"],
   address: ["Shop address", "د دوکان پته", "آدرس دکان"],
   shopDetails: ["Shop profile", "د دوکان معلومات", "مشخصات دکان"],
-  completeShopProfile: ["Complete shop profile", "د دوکان معلومات بشپړ کړئ", "مشخصات دکان را تکمیل کنید"],
+  completeShopProfile: [
+    "Complete shop profile",
+    "د دوکان معلومات بشپړ کړئ",
+    "مشخصات دکان را تکمیل کنید",
+  ],
   shopOwnerRequired: [
     "Ask the shop owner to complete the shop name, owner name and address before saving records.",
     "د ثبتونو له خوندي کولو مخکې له مالک څخه وغواړئ چې د دوکان نوم، د مالک نوم او پته بشپړ کړي.",
@@ -859,11 +986,7 @@ const copy = {
   calendar: ["Gregorian dates", "میلادي نېټې", "تاریخ میلادی"],
   signOut: ["Sign out", "وتل", "خروج"],
   signIn: ["Sign in", "ننوتل", "ورود"],
-  loginCode: [
-    "Activation code",
-    "د فعالولو کوډ",
-    "کد فعال‌سازی",
-  ],
+  loginCode: ["Activation code", "د فعالولو کوډ", "کد فعال‌سازی"],
   loginCodeHint: [
     "Enter the 8-digit code provided by your administrator. No SMS is sent.",
     "د مدیر لخوا درکړل شوی ۸ عددي کوډ ولیکئ. پیغام نه لېږل کېږي.",

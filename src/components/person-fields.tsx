@@ -74,6 +74,9 @@ export function PersonFields({
         label={t(key) + (key === "name" ? " *" : "")}
         value={value[key] ?? ""}
         onChangeText={(text) => onChange({ ...value, [key]: text })}
+        keyboardType={
+          key === "phone" || key === "relativePhone" ? "phone-pad" : undefined
+        }
         numeric={[
           "phone",
           "relativePhone",

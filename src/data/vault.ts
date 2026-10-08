@@ -8,7 +8,7 @@ const acquireVault = createVaultPool();
 export interface Vault {
   storage?: "sqlite" | "memory" | "cloud";
   get<T>(key: string): Promise<T | null>;
-  list<T>(prefix: string): Promise<T[]>;
+  list<T>(prefix: string, scope?: { recordId: string }): Promise<T[]>;
   batch(changes: { key: string; value: unknown | null }[]): Promise<void>;
   close(): Promise<void>;
 }

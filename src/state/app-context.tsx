@@ -13,6 +13,7 @@ import {
 } from "react";
 import { AppState, Platform } from "react-native";
 import { backend } from "../data/backend";
+import { shopQueries, type ShopQueries, type ListedRecord } from "../data/shop-queries";
 import { cloudVault } from "../data/cloud-vault";
 import { demoMembership, ensureDemoData } from "../data/demo";
 import { redeemLoginCode } from "../data/login-code";
@@ -48,8 +49,10 @@ function useController() {
   const [language, setLanguageState] = useState<Language>("ps");
   const [gregorian, setGregorianState] = useState(false);
   const [demo, setDemo] = useState(false);
-  const [records, setRecords] = useState<Transaction[]>([]);
+  const [records, setRecords] = useState<ListedRecord[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [queries, setQueries] = useState<ShopQueries | null>(null);
+  const [dataVersion, setDataVersion] = useState(0);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [amendments, setAmendments] = useState<Amendment[]>([]);
   const [operations, setOperations] = useState<Operation[]>([]);
@@ -68,18 +71,25 @@ function useController() {
     const repo = repository.current;
     if (!repo) return;
     if (repo.vault.storage === "cloud") await repo.vault.get("profile");
-    const [r, c, d, a, o] = await Promise.all([
-      repo.records(),
-      repo.customers(),
-      repo.drafts(),
-      repo.amendments(),
-      repo.operations(),
-    ]);
-    setRecords(r.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)));
-    setCustomers(c);
-    setDrafts(d);
-    setAmendments(a);
-    setOperations(o);
+    if (repo.vault.storage === "cloud") {
+      const [recent, d] = await Promise.all([
+        shopQueries(repo, backend).records({ limit: 3 }), repo.drafts(),
+      ]);
+      if (repository.current !== repo) return;
+      setRecords(recent.items);
+      setCustomers([]);
+      setAmendments([]);
+      setOperations([]);
+      setDrafts(d);
+    } else {
+      const [r, c, d, a, o] = await Promise.all([
+        repo.records(), repo.customers(), repo.drafts(), repo.amendments(), repo.operations(),
+      ]);
+      if (repository.current !== repo) return;
+      setRecords(r.sort((a,b)=>b.occurredAt.localeCompare(a.occurredAt)));
+      setCustomers(c); setDrafts(d); setAmendments(a); setOperations(o);
+    }
+    setDataVersion(v => v + 1);
     setMembership({ ...repo.membership });
   }, []);
   const sync = useCallback(async () => {
@@ -139,6 +149,7 @@ function useController() {
             const cached = await vault.get<ShopProfile>("profile");
             m.profile = { ...emptyShop(), ...m.profile, ...(cached ?? {}) };
             repository.current = new Repository(vault, m, Crypto.randomUUID);
+            setQueries(shopQueries(repository.current, backend));
             demoRef.current = isDemo;
             setDemo(isDemo);
             setMembership(m);
@@ -310,6 +321,7 @@ function useController() {
     setAmendments([]);
     setOperations([]);
     setMembership(null);
+    setQueries(null);
     setDemo(false);
     demoRef.current = false;
     setPhase("login");
@@ -414,6 +426,8 @@ function useController() {
     rtl: language !== "en",
     demo,
     records,
+    queries,
+    dataVersion,
     customers,
     drafts,
     amendments,

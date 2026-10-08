@@ -3,8 +3,8 @@ import {
   useVisualPreferences,
 } from "../../components/visual-effects";
 import { DateTimePicker } from "@expo/ui/community/datetime-picker";
-import { router } from "expo-router";
-import { useMemo, useState } from "react";
+import { router, useIsFocused } from "expo-router";
+import { useState } from "react";
 import {
   FlatList,
   Modal,
@@ -28,9 +28,11 @@ import {
   colors,
 } from "../../components/ui";
 import { formatDate, localDay } from "../../domain/format";
-import { matchesRecord } from "../../domain/validation";
+
 import { useApp } from "../../state/app-context";
-import { usePage } from "../../state/use-page";
+import { useServerPage } from "../../state/use-server-page";
+import type { RecordCursor } from "../../data/shop-queries";
+import { PageFeedback } from "../../components/page-feedback";
 
 function dayKey(value: Date) {
   return localDay(value.toISOString());
@@ -43,24 +45,15 @@ function dateFromDay(day: string) {
 }
 
 export default function Records() {
-  const { records, t, language, gregorian } = useApp();
+  const { queries, dataVersion, membership, t, language, gregorian } = useApp();
+  const focused = useIsFocused();
   const { reduceMotion } = useVisualPreferences();
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState("all");
   const [date, setDate] = useState("");
   const [picking, setPicking] = useState(false);
   const [draft, setDraft] = useState(() => new Date());
-  const filtered = useMemo(
-    () =>
-      records.filter(
-        (r) =>
-          matchesRecord(r, query) &&
-          (kind === "all" || r.direction === kind) &&
-          (!date || localDay(r.occurredAt) === date),
-      ),
-    [records, query, kind, date],
-  );
-  const page = usePage(filtered, `${query}\0${kind}\0${date}`);
+  const page = useServerPage((cursor: RecordCursor | null, signal) => queries!.records({query,direction:kind,day:date},cursor,signal), `${membership?.shopId}:${dataVersion}:${JSON.stringify([query,kind,date])}`, !!queries && focused);
 
   function openPicker() {
     setDraft(dateFromDay(date));
@@ -102,88 +95,74 @@ export default function Records() {
               onChangeText={setQuery}
             />
             <FingerprintSearch />
-            <Row style={{ marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
-              {(["all", "buy", "sell"] as const).map((k) => (
-                <Chip
-                  key={k}
-                  label={t(k)}
-                  active={kind === k}
-                  onPress={() => setKind(k)}
-                />
-              ))}
-            </Row>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("filters")}
-              onPress={openPicker}
-              style={({ pressed }) => [
-                styles.dateButton,
-                { backgroundColor: pressed ? colors.mint : colors.paper },
-              ]}
-            >
-              <Row style={{ flex: 1, gap: 12 }}>
-                <View style={styles.dateIcon}>
-                  <Icon name="calendar" color={colors.green} size={21} />
-                </View>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Txt bold size={15}>
-                    {date
-                      ? formatDate(
-                          `${date}T12:00:00+04:30`,
-                          language,
-                          gregorian,
-                        )
-                      : t("filters")}
-                  </Txt>
-                </View>
-                {date ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={t("clearDate")}
-                    hitSlop={10}
-                    onPress={() => setDate("")}
-                    style={{
-                      minHeight: 44,
-                      justifyContent: "center",
-                      paddingHorizontal: 4,
-                    }}
-                  >
-                    <Icon name="close-circle" size={22} color={colors.muted} />
-                  </Pressable>
-                ) : (
-                  <Icon name="chevron-down" size={20} color={colors.muted} />
-                )}
+            <Row style={{ marginBottom: 8, gap: 8 }}>
+              <Row style={{ flex: 1, flexWrap: "wrap", gap: 8 }}>
+                {(["all", "buy", "sell"] as const).map((k) => (
+                  <Chip
+                    key={k}
+                    label={t(k)}
+                    active={kind === k}
+                    onPress={() => setKind(k)}
+                  />
+                ))}
               </Row>
-            </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("filters")}
+                accessibilityState={{ selected: !!date, expanded: picking }}
+                onPress={openPicker}
+                style={({ pressed }) => [
+                  styles.dateButton,
+                  {
+                    backgroundColor: date
+                      ? colors.green
+                      : pressed
+                        ? colors.mint
+                        : colors.paper,
+                    borderColor: date ? colors.green : colors.line,
+                  },
+                ]}
+              >
+                <Icon
+                  name="calendar"
+                  color={date ? "#fff" : colors.green}
+                  size={22}
+                />
+              </Pressable>
+            </Row>
+            {date ? (
+              <Row style={{ gap: 8 }}>
+                <Txt size={12} color={colors.green}>
+                  {formatDate(`${date}T12:00:00+04:30`, language, gregorian)}
+                </Txt>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t("clearDate")}
+                  onPress={() => setDate("")}
+                  style={styles.clearDateButton}
+                >
+                  <Icon name="close-circle" size={20} color={colors.muted} />
+                </Pressable>
+              </Row>
+            ) : null}
             <Txt muted size={12} style={{ marginTop: 12, marginBottom: 12 }}>
-              {page.items.length === filtered.length
-                ? `${filtered.length} ${t("records")}`
-                : `${page.items.length} / ${filtered.length} ${t("records")}`}
+              {`${page.items.length}${page.hasMore ? "+" : ""} ${t("records")}`}
             </Txt>
           </>
         }
         data={page.items}
         keyExtractor={(r) => r.id}
         renderItem={({ item }) => <RecordRow record={item} />}
-        ListEmptyComponent={<Empty title={t("empty")} />}
+        ListEmptyComponent={!page.loading && !page.error ? <Empty title={t("empty")} /> : null}
         ItemSeparatorComponent={() => <View style={{ height: 2 }} />}
         onEndReached={page.hasMore ? page.loadMore : undefined}
         onEndReachedThreshold={0.4}
         initialNumToRender={12}
         maxToRenderPerBatch={8}
         windowSize={7}
-        ListFooterComponent={
-          page.hasMore ? (
-            <View style={{ paddingVertical: 14 }}>
-              <Button
-                small
-                secondary
-                label={t("loadMore")}
-                onPress={page.loadMore}
-              />
-            </View>
-          ) : null
-        }
+        refreshing={page.loading && !page.items.length}
+        onRefresh={page.reload}
+        ListFooterComponent={<PageFeedback {...page} onMore={page.loadMore} onRetry={page.retry} />}
       />
       {picking && Platform.OS === "android" ? (
         <DateTimePicker
@@ -267,17 +246,18 @@ export default function Records() {
 const styles = StyleSheet.create({
   dateButton: {
     borderWidth: 1,
-    borderColor: colors.line,
     borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    minHeight: 48,
+    width: 44,
+    height: 44,
+    flexShrink: 0,
+    alignItems: "center",
     justifyContent: "center",
   },
-  dateIcon: {
-    padding: 6,
-    borderRadius: 13,
-    backgroundColor: colors.mint,
+  clearDateButton: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   backdrop: {
     flex: 1,

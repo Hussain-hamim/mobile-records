@@ -401,3 +401,7 @@ verify_jwt = false
 
 [functions.photo-cleanup]
 verify_jwt = false
+
+# The handler validates the bearer token with auth.getUser before any RPC.
+[functions.previous-shop]
+verify_jwt = false

@@ -238,7 +238,13 @@ function RecordPhotoContent({
               accessibilityLabel={label(slot)}
               disabled={busy}
               onPress={() => {
-                setSelected(slot);
+                if (savedRecord) {
+                  setBusy(true);
+                  void app.queries!.record(recordId).then(detail => {
+                    setBaseId(detail?.amendments.sort((a,b)=>a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id)).at(-1)?.id ?? null);
+                    setSelected(slot);
+                  }).catch(e=>setError(errorText(e,t))).finally(()=>setBusy(false));
+                } else { setBaseId(null); setSelected(slot); }
                 setPhotoRevision(
                   remote.cloud.heads.find((h) => h.slot === slot)?.revision ??
                     0,
@@ -246,12 +252,7 @@ function RecordPhotoContent({
                 setError("");
                 setReason("");
                 setRemoveConfirm(false);
-                setBaseId(
-                  app.amendments
-                    .filter((a) => a.recordId === recordId)
-                    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-                    .at(-1)?.id ?? null,
-                );
+
               }}
               style={{ flex: 1, minWidth: 0 }}
             >

@@ -186,6 +186,7 @@ export function FingerprintCards({
       {scanning && action ? (
         <FingerprintPrompt
           mode="enroll"
+          excludeTemplateId={original?.id}
           templates={[
             ...scanTemplates(app.customers).filter(
               (f) => f.id !== original?.id,

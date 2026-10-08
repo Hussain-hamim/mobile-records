@@ -23,7 +23,7 @@ export interface Overview {
   activeAccounts: number;
   records: number;
   pendingCodes: number;
-  recentActivity: { action: string; user_id: string; at: string }[];
+  recentActivity: { action: string; user_id: string | null; at: string }[];
 }
 export interface IssuedCode {
   phone: string;

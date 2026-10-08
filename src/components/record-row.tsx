@@ -1,11 +1,11 @@
 import { router } from "expo-router";
 import { Pressable, StyleSheet, View } from "react-native";
 import { formatDate, formatMoney, phoneLabel } from "../domain/format";
-import type { Transaction } from "../domain/models";
+import type { ListedRecord } from "../data/shop-queries";
 import { useApp } from "../state/app-context";
 import { Icon, Row, Txt, colors } from "./ui";
 
-export function RecordRow({ record }: { record: Transaction }) {
+export function RecordRow({ record }: { record: ListedRecord }) {
   const { language, gregorian, t, rtl, amendments } = useApp();
   const buy = record.direction === "buy";
   const accent = buy ? colors.green : colors.amber;
@@ -44,7 +44,7 @@ export function RecordRow({ record }: { record: Transaction }) {
             <Row style={{ gap: 8, marginTop: 4, flexWrap: "wrap" }}>
               <View style={[styles.badge, { backgroundColor: soft }]}>
                 <Txt size={10} bold color={accent}>
-                  {t(amendments.some(a => a.recordId === record.id && a.kind === "void") ? "recordVoided" : buy ? "bought" : "sold")}
+                  {t(record.listVoided || amendments.some(a => a.recordId === record.id && a.kind === "void") ? "recordVoided" : buy ? "bought" : "sold")}
                 </Txt>
               </View>
               <Txt size={11} muted>

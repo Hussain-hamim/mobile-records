@@ -23,7 +23,7 @@ export function cloudVault(api: SupabaseClient, membership: Membership): Vault {
     amendment: { table: "amendments", fields: "id,payload" },
     draft: { table: "transaction_drafts", fields: "id,payload" },
   };
-  async function read(prefix: string, id?: string) {
+  async function read(prefix: string, id?: string, recordId?: string) {
     if (prefix === "op") return [];
     const source = sources[prefix as keyof typeof sources];
     if (!source) throw new Error("Unsupported cloud collection");
@@ -37,6 +37,7 @@ export function cloudVault(api: SupabaseClient, membership: Membership): Vault {
         .range(offset, offset + 499);
       if (prefix === "draft") query = query.eq("user_id", membership.userId);
       if (id) query = query.eq("id", id);
+      if (recordId && prefix === "amendment") query = query.eq("record_id", recordId);
       const { data, error } = await query;
       if (error) throw new Error(error.message);
       for (const item of data ?? []) {
@@ -78,8 +79,8 @@ export function cloudVault(api: SupabaseClient, membership: Membership): Vault {
         )[0] ?? null) as T | null;
       });
     },
-    list<T>(prefix: string) {
-      return enqueue(async () => (await read(prefix.replace(/:$/, ""))) as T[]);
+    list<T>(prefix: string, scope?: { recordId: string }) {
+      return enqueue(async () => (await read(prefix.replace(/:$/, ""), undefined, scope?.recordId)) as T[]);
     },
     batch(changes) {
       return enqueue(async () => {

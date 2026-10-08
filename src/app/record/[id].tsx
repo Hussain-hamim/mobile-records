@@ -1,3 +1,6 @@
+import { useShopQuery } from "../../state/use-shop-query";
+import { PageFeedback } from "../../components/page-feedback";
+import { RecordDetailSkeleton } from "../../components/record-detail-skeleton";
 import { fingerprintsOf } from "../../domain/fingerprints";
 import type { ReceiptContext } from "../../domain/receipt-attachments";
 import { RecordChanges } from "../../components/record-changes";
@@ -10,7 +13,6 @@ import {
   Chip,
   Card,
   Field,
-  Icon,
   SectionTitle,
   Disclosure,
   colors,
@@ -26,15 +28,25 @@ import { printRecord } from "../../services/printing";
 import type { FormPicture } from "../../services/form-image-types";
 import { FormPicturePreview } from "../../components/form-picture-preview";
 import { saveFormImage } from "../../services/form-image";
-import { formatDate, formatAuditDate, formatMoney } from "../../domain/format";
+import { formatDate, formatAuditDate } from "../../domain/format";
 import type { Transaction } from "../../domain/models";
 import { RecordPhotos } from "../../components/record-photos";
+import {
+  RecordDetailSummary,
+  RecordDetailField,
+} from "../../components/record-detail-summary";
+import { PreviousShop } from "../../components/previous-shop";
 export default function RecordDetail() {
   const app = useApp();
   const { t } = app;
   const { id } = useLocalSearchParams<{ id: string }>();
-  const record = app.records.find((r) => r.id === id);
-  const corrections = app.amendments
+  const detail = useShopQuery(
+    () => app.queries!.record(id),
+    `${app.membership?.shopId}:${app.dataVersion}:${id}`,
+    !!app.queries && !!id,
+  );
+  const record = detail.value?.record;
+  const corrections = (detail.value?.amendments ?? [])
     .filter((a) => a.recordId === id)
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   const [edit, setEdit] = useState<Transaction | null>(null);
@@ -60,15 +72,19 @@ export default function RecordDetail() {
       setBusy(false);
     }
   }
+  if (!record && detail.loading)
+    return <RecordDetailSkeleton onBack={() => router.back()} />;
   if (!record)
     return (
       <Screen>
         <Button label={t("back")} onPress={() => router.back()} />
+        <PageFeedback {...detail} onRetry={detail.retry} />
+        {!detail.loading && !detail.error ? <Txt>{t("empty")}</Txt> : null}
       </Screen>
     );
   function receiptContext(snapshot: Transaction): ReceiptContext | undefined {
     if (!app.membership) return undefined;
-    const customer = app.customers.find((c) => c.id === snapshot.customerId);
+    const customer = detail.value?.customer;
     return {
       shopId: app.membership.shopId,
       userId: app.membership.userId,
@@ -81,6 +97,9 @@ export default function RecordDetail() {
   const op = app.operations.find(
     (o) => o.kind === "record" && (o.payload as Transaction).id === record.id,
   );
+  const effectivePhone =
+    corrections.filter((a) => !a.kind || a.kind === "correction").at(-1)
+      ?.snapshot.phone ?? record.phone;
   return (
     <Screen>
       <Heading
@@ -95,183 +114,209 @@ export default function RecordDetail() {
           />
         }
       />
-      <Button
-        secondary
-        icon="account-outline"
-        label={t("viewCustomer")}
-        onPress={() =>
-          router.push({
-            pathname: "/customer/[id]",
-            params: { id: record.customerId },
-          })
-        }
-      />
       <FormPicturePreview picture={picture} onClose={() => setPicture(null)} />
       <Notice message={error} tone="error" />
       <Notice message={message} />
-      {originalLayout ? <Notice message={t("draftForm")} /> : null}
       {voided ? <Notice message={t("recordVoided")} tone="error" /> : null}
-      <Txt muted size={12}>
-        {t("originalRecord")}
-      </Txt>
-      <Card style={{ backgroundColor: colors.navy, borderColor: colors.navy }}>
-        <Row style={{ justifyContent: "space-between", marginBottom: 12 }}>
-          <View
-            style={{
-              backgroundColor: "#FFFFFF18",
-              padding: 12,
-              borderRadius: 16,
-            }}
-          >
-            <Icon name="cellphone-check" color={colors.lime} size={29} />
-          </View>
-          <View>
-            <Txt size={12} color={colors.lime}>
-              {t(record.direction === "buy" ? "bought" : "sold")}
-            </Txt>
-            <Txt size={11} color={colors.lime}>
-              {app.demo ? t("demoMode") : t(op?.state ?? record.syncState)}
-            </Txt>
-          </View>
-        </Row>
-        <Txt bold size={22} color="#fff">
-          {record.phone.brand} {record.phone.model}
-        </Txt>
-        <Txt size={24} bold color={colors.lime} style={{ marginTop: 8 }}>
-          {formatMoney(record.price, app.language)}
-        </Txt>
-      </Card>
-      <Card>
-        <Disclosure title={t("phoneDetails")} icon="cellphone">
-          {Object.entries(record.phone)
-            .filter(([k, v]) => v && k !== "brand" && k !== "model")
-            .map(([k, v]) => (
-              <Row
-                key={k}
-                style={{ justifyContent: "space-between", marginTop: 9 }}
-              >
-                <Txt size={12} muted>
-                  {t(k as keyof typeof record.phone)}
-                </Txt>
-                <View style={{ flex: 1 }}>
-                  <Txt
-                    size={13}
-                    style={
-                      k.startsWith("imei")
-                        ? { writingDirection: "ltr" }
-                        : undefined
-                    }
-                  >
-                    {v}
-                  </Txt>
-                </View>
-              </Row>
-            ))}
-        </Disclosure>
-      </Card>
+      <RecordDetailSummary
+        record={record}
+        syncState={op?.state ?? record.syncState}
+        voided={voided}
+        corrected={corrections.some((a) => !a.kind || a.kind === "correction")}
+      />
       <Card>
         <SectionTitle title={t("customerDetails")} icon="account-outline" />
-        <RecordPhotos
-          recordId={record.id}
-          direction={record.direction}
-          editable={app.membership?.role === "owner" && !voided}
-          savedRecord={record}
-        />
-        <Txt bold>{record.customer.name}</Txt>
-        <Txt muted style={{ writingDirection: "ltr" }}>{record.customer.phone}</Txt>
-        <Disclosure title={t("moreDetails")} icon="account-details-outline">
-          {Object.entries(record.customer)
-            .filter(([, v]) => v)
-            .map(([k, v]) => (
-              <View key={k} style={{ marginTop: 8 }}>
-                <Txt muted size={11}>
-                  {t(k as keyof typeof record.customer)}
-                </Txt>
-                <Txt size={14}>
-                  {k === "idType" ? t(v === "pnid" ? "pnid" : "enid") : v}
-                </Txt>
-              </View>
-            ))}
-        </Disclosure>
-      </Card>
-      <Row style={{ flexWrap: "wrap", marginBottom: 12 }}>
-        <Chip
-          label={t("pashtoForm")}
-          active={!originalLayout}
-          onPress={() => setOriginalLayout(false)}
-        />
-        <Chip
-          label={t("originalFormLayout")}
-          active={originalLayout}
-          onPress={() => setOriginalLayout(true)}
-        />
-      </Row>
-      <Row>
-        <View style={{ flex: 1 }}>
+        <Txt bold size={20}>
+          {record.customer.name}
+        </Txt>
+        {record.customer.phone ? (
+          <Txt
+            selectable
+            muted
+            style={{ writingDirection: "ltr", marginTop: 4 }}
+          >
+            {record.customer.phone}
+          </Txt>
+        ) : null}
+        <View style={{ marginTop: 14 }}>
           <Button
-            label={t("print")}
-            icon="printer-outline"
-            loading={busy}
+            secondary
+            small
+            icon="account-arrow-right-outline"
+            label={t("viewCustomer")}
             onPress={() =>
-              void run(() =>
-                printRecord(
-                  record,
-                  app.language,
-                  app.gregorian,
-                  false,
-                  voided ? t("recordVoided") : undefined,
-                  receiptContext(record),
-                ),
-              )
+              router.push({
+                pathname: "/customer/[id]",
+                params: { id: record.customerId },
+              })
             }
           />
         </View>
-        <Button
-          label={t("share")}
-          secondary
-          icon="share-variant-outline"
-          loading={busy}
-          onPress={() =>
-            void run(() =>
-              printRecord(
-                record,
-                app.language,
-                app.gregorian,
-                true,
-                voided ? t("recordVoided") : undefined,
-                receiptContext(record),
-              ),
-            )
-          }
-        />
-      </Row>
-      <View style={{ marginTop: 12 }}>
-        <Button
-          label={t("savePicture")}
-          secondary
-          icon="image-outline"
-          loading={busy}
-          onPress={() =>
-            void run(async () => {
-              const result = await saveFormImage(
-                record,
-                app.language,
-                app.gregorian,
-                voided ? t("recordVoided") : undefined,
-                setPicture,
-                receiptContext(record),
-              );
-              if (result) setMessage(t(result));
-            })
-          }
-        />
-      </View>
-      <View style={{ height: 22 }} />
+        <View style={{ marginTop: 14 }}>
+          <RecordDetailField
+            label={t("idNumber")}
+            value={record.customer.idNumber}
+            numeric
+          />
+        </View>
+        <Disclosure title={t("moreDetails")} icon="account-details-outline">
+          {Object.entries(record.customer)
+            .filter(([k, v]) => v && !["name", "phone", "idNumber"].includes(k))
+            .map(([k, v]) => (
+              <RecordDetailField
+                key={k}
+                label={t(k as keyof typeof record.customer)}
+                value={k === "idType" ? t(v === "pnid" ? "pnid" : "enid") : v}
+                numeric={["relativePhone", "idVolume", "idPage"].includes(k)}
+              />
+            ))}
+        </Disclosure>
+      </Card>
+      <Card style={{ backgroundColor: colors.mint, borderColor: "#D6E5DA" }}>
+        <SectionTitle title={t("recordReceipt")} icon="file-document-outline" />
+        <Disclosure
+          title={t("recordFormLayout")}
+          hint={t(originalLayout ? "originalFormLayout" : "pashtoForm")}
+        >
+          <Row style={{ flexWrap: "wrap", marginBottom: 12 }}>
+            <Chip
+              label={t("pashtoForm")}
+              active={!originalLayout}
+              onPress={() => setOriginalLayout(false)}
+            />
+            <Chip
+              label={t("originalFormLayout")}
+              active={originalLayout}
+              onPress={() => setOriginalLayout(true)}
+            />
+          </Row>
+          {originalLayout ? <Notice message={t("draftForm")} /> : null}
+        </Disclosure>
+        <Row style={{ flexWrap: "wrap", alignItems: "stretch", marginTop: 8 }}>
+          <View style={{ flexGrow: 1, flexBasis: 120 }}>
+            <Button
+              label={t("print")}
+              icon="printer-outline"
+              loading={busy}
+              onPress={() =>
+                void run(() =>
+                  printRecord(
+                    record,
+                    app.language,
+                    app.gregorian,
+                    false,
+                    voided ? t("recordVoided") : undefined,
+                    receiptContext(record),
+                  ),
+                )
+              }
+            />
+          </View>
+          <View style={{ flexGrow: 1, flexBasis: 120 }}>
+            <Button
+              label={t("share")}
+              secondary
+              icon="share-variant-outline"
+              loading={busy}
+              onPress={() =>
+                void run(() =>
+                  printRecord(
+                    record,
+                    app.language,
+                    app.gregorian,
+                    true,
+                    voided ? t("recordVoided") : undefined,
+                    receiptContext(record),
+                  ),
+                )
+              }
+            />
+          </View>
+        </Row>
+        <View style={{ marginTop: 10 }}>
+          <Button
+            label={t("savePicture")}
+            secondary
+            icon="image-outline"
+            loading={busy}
+            onPress={() =>
+              void run(async () => {
+                const result = await saveFormImage(
+                  record,
+                  app.language,
+                  app.gregorian,
+                  voided ? t("recordVoided") : undefined,
+                  setPicture,
+                  receiptContext(record),
+                );
+                if (result) setMessage(t(result));
+              })
+            }
+          />
+        </View>
+      </Card>
+      <Card>
+        <SectionTitle title={t("phoneDetails")} icon="cellphone" />
+        {(["imei1", "imei2"] as const).map((key) => (
+          <RecordDetailField
+            key={key}
+            label={t(key)}
+            value={record.phone[key]}
+            numeric
+          />
+        ))}
+        <Row style={{ flexWrap: "wrap", gap: 0 }}>
+          {(["color", "storage", "ram", "simCount", "condition"] as const)
+            .filter((key) => record.phone[key])
+            .map((key) => (
+              <View
+                key={key}
+                style={{
+                  flexBasis: "50%",
+                  flexGrow: 1,
+                  paddingEnd: 12,
+                  minWidth: 130,
+                }}
+              >
+                <RecordDetailField label={t(key)} value={record.phone[key]} />
+              </View>
+            ))}
+        </Row>
+        <RecordDetailField label={t("notes")} value={record.phone.notes} />
+      </Card>
+      <Card>
+        <Disclosure
+          title={t("recordPhotos")}
+          icon="image-multiple-outline"
+          hint={t("recordPhotosHint")}
+        >
+          <RecordPhotos
+            recordId={record.id}
+            direction={record.direction}
+            editable={app.membership?.role === "owner" && !voided}
+            savedRecord={record}
+          />
+        </Disclosure>
+      </Card>
+      <PreviousShop imeis={[effectivePhone.imei1, effectivePhone.imei2]} />
       {corrections.length ? (
         <Card>
-          <Disclosure title={t("amendments")} icon="history">
+          <Disclosure
+            title={t("amendments")}
+            icon="history"
+            hint={`${corrections.length} · ${t("recordHistoryHint")}`}
+          >
             {corrections.map((a, index) => (
-              <View key={a.id} style={{ marginTop: 15 }}>
+              <View
+                key={a.id}
+                style={{
+                  marginTop: 12,
+                  padding: 14,
+                  borderRadius: 14,
+                  backgroundColor: colors.bg,
+                  gap: 6,
+                }}
+              >
                 <Txt bold>
                   {t(
                     a.kind === "void"
@@ -369,111 +414,135 @@ export default function RecordDetail() {
           </Disclosure>
         </Card>
       ) : null}
-      {app.membership?.role === "owner" && !edit && !voided && !voiding ? (
-        <Button
-          secondary
-          label={t("amend")}
-          onPress={() => {
-            setEditBase(latestId);
-            setEdit(
-              JSON.parse(
-                JSON.stringify(
-                  corrections
-                    .filter((a) => !a.kind || a.kind === "correction")
-                    .at(-1)?.snapshot ?? record,
-                ),
-              ) as Transaction,
-            );
-          }}
-        />
-      ) : null}
-      {app.membership?.role === "owner" && !voided && !edit ? (
-        voiding ? (
-          <Card>
-            <Notice message={t("voidHint")} />
-            <Field
-              label={t("reason")}
-              value={reason}
-              onChangeText={setReason}
-              maxLength={500}
-            />
-            <Button
-              label={t("confirmVoid")}
-              loading={busy}
-              disabled={busy || !reason.trim()}
-              onPress={() =>
-                void run(async () => {
-                  await app.amend(record, reason, editBase, "void");
-                  setVoiding(false);
-                  setReason("");
-                })
-              }
-            />
-            <Button
-              secondary
-              label={t("cancel")}
-              disabled={busy}
-              onPress={() => setVoiding(false)}
-            />
-          </Card>
-        ) : (
-          <Button
-            secondary
-            icon="cancel"
-            label={t("voidRecord")}
-            onPress={() => {
-              setEditBase(latestId);
-              setReason("");
-              setVoiding(true);
-            }}
-          />
-        )
-      ) : null}
-      {edit ? (
+      {app.membership?.role === "owner" && !voided ? (
         <Card>
-          <Field label={t("reason")} value={reason} onChangeText={setReason} />
-          <Row style={{ marginBottom: 16 }}>
-            {(["buy", "sell"] as const).map((direction) => (
-              <Chip
-                key={direction}
-                label={t(direction)}
-                active={edit.direction === direction}
-                onPress={() => setEdit({ ...edit, direction })}
+          <SectionTitle title={t("recordManage")} icon="file-edit-outline" />
+          <View style={{ gap: 12 }}>
+            {app.membership?.role === "owner" &&
+            !edit &&
+            !voided &&
+            !voiding ? (
+              <Button
+                secondary
+                label={t("amend")}
+                icon="pencil-outline"
+                disabled={busy}
+                onPress={() => {
+                  setReason("");
+                  setEditBase(latestId);
+                  setEdit(
+                    JSON.parse(
+                      JSON.stringify(
+                        corrections
+                          .filter((a) => !a.kind || a.kind === "correction")
+                          .at(-1)?.snapshot ?? record,
+                      ),
+                    ) as Transaction,
+                  );
+                }}
               />
-            ))}
-          </Row>
-          <PersonFields
-            value={edit.customer}
-            onChange={(customer) => setEdit({ ...edit, customer })}
-          />
-          {Object.entries(edit.phone).map(([k, v]) => (
-            <Field
-              key={k}
-              label={t(k as keyof typeof edit.phone)}
-              value={v}
-              onChangeText={(value) =>
-                setEdit({ ...edit, phone: { ...edit.phone, [k]: value } })
-              }
-            />
-          ))}
-          <Field
-            label={t("price")}
-            value={edit.price}
-            onChangeText={(price) => setEdit({ ...edit, price })}
-            numeric
-          />
-          <Button
-            label={t("save")}
-            loading={busy}
-            onPress={() =>
-              void run(async () => {
-                await app.amend(edit, reason, editBase);
-                setEdit(null);
-                setReason("");
-              })
-            }
-          />
-          <Button label={t("cancel")} secondary onPress={() => setEdit(null)} />
+            ) : null}
+            {app.membership?.role === "owner" && !voided && !edit ? (
+              voiding ? (
+                <Card>
+                  <Notice message={t("voidHint")} />
+                  <Field
+                    label={t("reason")}
+                    value={reason}
+                    onChangeText={setReason}
+                    maxLength={500}
+                  />
+                  <Button
+                    label={t("confirmVoid")}
+                    variant="destructive"
+                    loading={busy}
+                    disabled={busy || !reason.trim()}
+                    onPress={() =>
+                      void run(async () => {
+                        await app.amend(record, reason, editBase, "void");
+                        setVoiding(false);
+                        setReason("");
+                      })
+                    }
+                  />
+                  <Button
+                    secondary
+                    label={t("cancel")}
+                    disabled={busy}
+                    onPress={() => setVoiding(false)}
+                  />
+                </Card>
+              ) : (
+                <Button
+                  secondary
+                  icon="cancel"
+                  label={t("voidRecord")}
+                  disabled={busy}
+                  onPress={() => {
+                    setEditBase(latestId);
+                    setReason("");
+                    setVoiding(true);
+                  }}
+                />
+              )
+            ) : null}
+            {edit ? (
+              <Card>
+                <Field
+                  label={t("reason")}
+                  value={reason}
+                  onChangeText={setReason}
+                />
+                <Row style={{ marginBottom: 16 }}>
+                  {(["buy", "sell"] as const).map((direction) => (
+                    <Chip
+                      key={direction}
+                      label={t(direction)}
+                      active={edit.direction === direction}
+                      onPress={() => setEdit({ ...edit, direction })}
+                    />
+                  ))}
+                </Row>
+                <PersonFields
+                  value={edit.customer}
+                  onChange={(customer) => setEdit({ ...edit, customer })}
+                />
+                {Object.entries(edit.phone).map(([k, v]) => (
+                  <Field
+                    key={k}
+                    label={t(k as keyof typeof edit.phone)}
+                    value={v}
+                    onChangeText={(value) =>
+                      setEdit({ ...edit, phone: { ...edit.phone, [k]: value } })
+                    }
+                  />
+                ))}
+                <Field
+                  label={t("price")}
+                  value={edit.price}
+                  onChangeText={(price) => setEdit({ ...edit, price })}
+                  numeric
+                />
+                <Button
+                  label={t("save")}
+                  loading={busy}
+                  onPress={() =>
+                    void run(async () => {
+                      await app.amend(edit, reason, editBase);
+                      setEdit(null);
+                      setReason("");
+                    })
+                  }
+                />
+                <Button
+                  label={t("cancel")}
+                  secondary
+                  disabled={busy}
+                  onPress={() => setEdit(null)}
+                />
+              </Card>
+            ) : null}
+          </View>
         </Card>
       ) : null}
     </Screen>

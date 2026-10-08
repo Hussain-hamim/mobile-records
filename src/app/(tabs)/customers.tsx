@@ -1,5 +1,5 @@
-import { router } from "expo-router";
-import { useMemo, useState } from "react";
+import { router, useIsFocused } from "expo-router";
+import { useState } from "react";
 import { FlatList, View } from "react-native";
 import { FingerprintSearch } from "../../components/fingerprint-search";
 import {
@@ -14,26 +14,16 @@ import {
   Txt,
   colors,
 } from "../../components/ui";
-import { digits, matchesTazkiraNumber } from "../../domain/validation";
+
 import { useApp } from "../../state/app-context";
-import { usePage } from "../../state/use-page";
+import { useServerPage } from "../../state/use-server-page";
+import { PageFeedback } from "../../components/page-feedback";
 
 export default function Customers() {
-  const { customers, t } = useApp();
+  const { queries, dataVersion, membership, t } = useApp();
+  const focused = useIsFocused();
   const [query, setQuery] = useState("");
-  const q = digits(query).trim().toLocaleLowerCase();
-  const filtered = useMemo(
-    () =>
-      customers.filter(
-        (c) =>
-          matchesTazkiraNumber(c.person.idNumber, q) ||
-          [c.person.name, c.person.phone, c.person.idNumber].some((s) =>
-            digits(s).toLocaleLowerCase().includes(q),
-          ),
-      ),
-    [customers, q],
-  );
-  const page = usePage(filtered, q);
+  const page = useServerPage((cursor: string | null, signal) => queries!.customers(query,cursor,signal), `${membership?.shopId}:${dataVersion}:${query}`, !!queries && focused);
   return (
     <Screen scroll={false} style={{ paddingBottom: 0 }}>
       <FlatList
@@ -50,9 +40,7 @@ export default function Customers() {
             />
             <FingerprintSearch onManual={() => {}} />
             <Txt size={12} muted style={{ marginBottom: 8 }}>
-              {page.items.length === filtered.length
-                ? `${filtered.length} ${t("customers")}`
-                : `${page.items.length} / ${filtered.length} ${t("customers")}`}
+              {`${page.items.length}${page.hasMore ? "+" : ""} ${t("customers")}`}
             </Txt>
           </>
         }
@@ -116,25 +104,16 @@ export default function Customers() {
           </Card>
         )}
         ListEmptyComponent={
-          <Empty title={t("customers")} hint={t("emptyHint")} />
+          !page.loading && !page.error ? <Empty title={t("customers")} hint={t("emptyHint")} /> : null
         }
         onEndReached={page.hasMore ? page.loadMore : undefined}
         onEndReachedThreshold={0.4}
         initialNumToRender={12}
         maxToRenderPerBatch={8}
         windowSize={7}
-        ListFooterComponent={
-          page.hasMore ? (
-            <View style={{ paddingVertical: 14 }}>
-              <Button
-                small
-                secondary
-                label={t("loadMore")}
-                onPress={page.loadMore}
-              />
-            </View>
-          ) : null
-        }
+        refreshing={page.loading && !page.items.length}
+        onRefresh={page.reload}
+        ListFooterComponent={<PageFeedback {...page} onMore={page.loadMore} onRetry={page.retry} />}
       />
     </Screen>
   );

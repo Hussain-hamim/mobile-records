@@ -1,4 +1,5 @@
 import { RecordsPanel } from "./records-panel.web";
+import { PreviousShopPanel } from "./previous-shop-panel.web";
 import { PhotoStoragePanel, PhotoRequests } from "./photo-storage-panel.web";
 import {
   useCallback,
@@ -160,6 +161,8 @@ const dateLabel = (value: string) =>
     timeZone: "Asia/Kabul",
   }).format(new Date(value));
 const labels: Record<string, string> = {
+  previous_shop_enabled: "Previous-shop lookup enabled",
+  previous_shop_disabled: "Previous-shop lookup disabled",
   issued: "Login code generated",
   redeemed: "Account signed in",
   locked: "Login code locked",
@@ -492,7 +495,11 @@ export default function AdminPortal() {
             <div>
               <strong>{labels[event.action] ?? event.action}</strong>
               <span>
-                Account {event.user_id.slice(0, 8)} · {dateLabel(event.at)}
+                {event.action.startsWith("previous_shop_")
+                  ? "Administrator"
+                  : "Account"}{" "}
+                {event.user_id?.slice(0, 8) ?? "Deleted account"} ·{" "}
+                {dateLabel(event.at)}
               </span>
             </div>
           </div>
@@ -746,6 +753,9 @@ export default function AdminPortal() {
               </div>
             ))}
           </div>
+          {section === "overview" && (
+            <PreviousShopPanel onChanged={() => void refresh()} />
+          )}
           {section !== "activity" && (
             <PhotoRequests onOpen={(id) => void openShop(id)} />
           )}

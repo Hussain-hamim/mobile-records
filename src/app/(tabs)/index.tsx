@@ -32,7 +32,7 @@ export default function Home() {
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          marginBottom: 12,
+          marginBottom: 24,
         }}
       >
         <Image
@@ -45,7 +45,7 @@ export default function Home() {
           <Txt size={16} bold>
             {t("app")}
           </Txt>
-          <Txt size={11} muted>
+          <Txt size={11} muted style={{ marginTop: 4 }}>
             {formatDate(new Date().toISOString(), app.language, app.gregorian)}
           </Txt>
         </View>
@@ -55,27 +55,21 @@ export default function Home() {
           onPress={() => router.push("/settings")}
         />
       </View>
-      <Row style={{ justifyContent: "space-between", marginBottom: 4 }}>
-        <Txt size={12} muted>
-          {t("welcomeBack")}
-        </Txt>
-        {app.demo ? (
+      {app.demo ? (
+        <Row style={{ justifyContent: "flex-end", marginBottom: 8 }}>
           <View style={styles.demo}>
             <View style={styles.dot} />
             <Txt size={10} color={colors.green} bold>
               {t("demoMode")}
             </Txt>
           </View>
-        ) : null}
-      </Row>
-      <Txt size={24} bold style={{ marginBottom: 6 }}>
+        </Row>
+      ) : null}
+      <Txt size={24} bold style={{ marginBottom: 24 }}>
         {app.membership?.profile.shopName || t("home")}
       </Txt>
-      <Txt size={12} muted style={{ marginBottom: 12 }}>
-        {t("nextDeal")}
-      </Txt>
       <ShopProfileNotice />
-      <Row style={{ gap: 12, alignItems: "stretch", marginBottom: 12 }}>
+      <Row style={{ gap: 12, alignItems: "stretch", marginBottom: 16 }}>
         {(["buy", "sell"] as const).map((direction) => {
           const buy = direction === "buy";
           return (
@@ -95,7 +89,9 @@ export default function Home() {
               ]}
             >
               {buy ? <GradientFill /> : null}
-              <Row style={{ justifyContent: "space-between", marginBottom: 8 }}>
+              <Row
+                style={{ justifyContent: "space-between", marginBottom: 16 }}
+              >
                 <View
                   style={[
                     styles.actionIcon,
@@ -120,7 +116,7 @@ export default function Home() {
               <Txt
                 size={11}
                 color={buy ? colors.lime : colors.green}
-                style={{ marginTop: 5 }}
+                style={{ marginTop: 8 }}
               >
                 {t(buy ? "buyHint" : "sellHint")}
               </Txt>
@@ -151,7 +147,7 @@ export default function Home() {
             <Txt bold size={14}>
               {t("scanFingerprint")}
             </Txt>
-            <Txt muted size={11}>
+            <Txt muted size={12} style={{ marginTop: 4 }}>
               {t("scanFingerprintIntro")}
             </Txt>
           </View>
@@ -164,7 +160,7 @@ export default function Home() {
       <Notice message={fpError} tone="error" />
       <HomeInsights />
       {app.drafts.length ? (
-        <View style={{ marginBottom: 20 }}>
+        <View style={{ marginBottom: 28 }}>
           <Button
             label={t("resume")}
             secondary
@@ -200,11 +196,15 @@ export default function Home() {
         </Pressable>
       </Row>
       {app.records.length ? (
-        app.records.slice(0, 3).map((r) => <RecordRow record={r} key={r.id} />)
+        app.records.slice(0, 3).map((r) => (
+          <View key={r.id} style={{ marginBottom: 6 }}>
+            <RecordRow record={r} />
+          </View>
+        ))
       ) : (
         <Empty title={t("empty")} hint={t("emptyHint")} />
       )}
-      <Row style={{ marginTop: 18, paddingHorizontal: 4 }}>
+      <Row style={{ marginTop: 24, paddingHorizontal: 4 }}>
         <Icon
           name={
             app.demo
@@ -224,7 +224,7 @@ export default function Home() {
                 (app.operations.length ? ` · ${app.operations.length}` : "")}
           </Txt>
           {!app.demo ? (
-            <Txt size={11} muted>
+            <Txt size={11} muted style={{ marginTop: 4 }}>
               {t("syncHint")}
             </Txt>
           ) : null}
@@ -267,7 +267,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.green },
-  action: { flex: 1, borderRadius: 12, padding: 12, overflow: "hidden" },
+  action: {
+    flex: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    overflow: "hidden",
+  },
   actionIcon: {
     width: 32,
     height: 32,
@@ -280,7 +286,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
     borderWidth: 1,
     borderColor: colors.line,
-    padding: 10,
-    marginBottom: 12,
+    padding: 16,
+    marginBottom: 28,
   },
 });

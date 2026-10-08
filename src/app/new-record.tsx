@@ -1,7 +1,9 @@
+import { CustomerPicker } from "../components/customer-picker";
+import { useShopQuery } from "../state/use-shop-query";
 import * as Crypto from "expo-crypto";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { FingerprintCards } from "../components/fingerprint-cards";
 import { FingerprintPrompt } from "../components/fingerprint-prompt";
 import { PersonFields } from "../components/person-fields";
@@ -42,6 +44,10 @@ import {
 import { normalizeImei, validateDraft } from "../domain/validation";
 import { lookupTac } from "../services/tac";
 import { useApp } from "../state/app-context";
+import {
+  PreviousShop,
+  type PreviousShopTrigger,
+} from "../components/previous-shop";
 export default function NewRecord() {
   const app = useApp();
   const { t } = app;
@@ -51,7 +57,6 @@ export default function NewRecord() {
     customer?: string;
     scan?: string;
   }>();
-  const preset = app.customers.find((c) => c.id === params.customer);
   const [draft, setDraft] = useState<Draft>(
     () =>
       (() => {
@@ -61,7 +66,7 @@ export default function NewRecord() {
         id: Crypto.randomUUID(),
         direction: params.direction === "sell" ? "sell" : "buy",
         phone: emptyPhone(),
-        customer: preset?.person ?? emptyPerson(),
+        customer: emptyPerson(),
         customerId: params.customer ?? "",
         customerConfirmed: true,
         fingerprints: [],
@@ -78,20 +83,23 @@ export default function NewRecord() {
   const secondImeiVisible = showSecondImei || Boolean(draft.phone.imei2);
   const [choosing, setChoosing] = useState(false);
   const [fingerFind, setFingerFind] = useState(false);
-  const currentCustomer = app.customers.find((c) => c.id === draft.customerId);
+  const customerDetail = useShopQuery(() => app.queries!.customer(draft.customerId), `${app.membership?.shopId}:${app.dataVersion}:${draft.customerId}`, !!app.queries && !!draft.customerId);
+  const currentCustomer = customerDetail.value ?? undefined;
+  const [appliedPreset, setAppliedPreset] = useState("");
+  if (!params.draft && params.customer && currentCustomer?.id === params.customer && appliedPreset !== params.customer) {
+    setAppliedPreset(params.customer);
+    if (!draft.customer.name.trim()) setDraft({...draft,customer:{...currentCustomer.person}});
+  }
   const fingers = draftFingerprints(draft, currentCustomer);
-  function chooseCustomer(id: string) {
-    const c = app.customers.find((c) => c.id === id);
-    if (!c) return;
-    patch({
-      customer: { ...c.person },
-      customerId: c.id,
-      fingerprints: [],
-      fingerprintTemplate: undefined,
-      fingerprintSkip: undefined,
-      customerConfirmed: true,
-    });
-    setChoosing(false);
+  async function chooseCustomer(id: string) {
+    setBusy(true);
+    try {
+      const c = await app.queries!.customer(id);
+      if (!c) throw new Error("empty");
+      patch({ customer: {...c.person}, customerId:c.id, fingerprints:[], fingerprintTemplate:undefined, fingerprintSkip:undefined, customerConfirmed:true });
+      setChoosing(false);
+    } catch(e) {setError(errorText(e,t));}
+    finally {setBusy(false);}
   }
   const [error, setError] = useState("");
   const [hint, setHint] = useState("");
@@ -99,6 +107,8 @@ export default function NewRecord() {
   const [discarding, setDiscarding] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const lookupRequest = useRef(0);
+  const [previousShopTrigger, setPreviousShopTrigger] =
+    useState<PreviousShopTrigger>();
   useEffect(
     () => () => {
       lookupRequest.current++;
@@ -150,12 +160,8 @@ export default function NewRecord() {
     setHint("");
     setChoosing(false);
   }
-  const history = app.records.filter(
-    (r) =>
-      [r.phone.imei1, r.phone.imei2].includes(
-        normalizeImei(draft.phone.imei1),
-      ) && draft.phone.imei1.length > 0,
-  );
+  const imeiHistory = useShopQuery(() => app.queries!.records({imei:normalizeImei(draft.phone.imei1),limit:25}), `${app.membership?.shopId}:${app.dataVersion}:${normalizeImei(draft.phone.imei1)}`, !!app.queries && /^\d{15}$/.test(normalizeImei(draft.phone.imei1)));
+  const history = imeiHistory.value?.items ?? [];
   async function lookup(
     value = draft.phone.imei1,
     target: "imei1" | "imei2" = "imei1",
@@ -167,7 +173,13 @@ export default function NewRecord() {
     setError("");
     try {
       const imei = normalizeImei(value);
-      const found = await resolvePhoneSuggestions(imei, app.records, lookupTac);
+      const pair = { ...baseline, [target]: imei };
+      setPreviousShopTrigger({
+        imeis: [pair.imei1, pair.imei2],
+        nonce: request,
+      });
+      const previous = await app.queries!.records({imei,limit:1});
+      const found = await resolvePhoneSuggestions(imei, previous.items, lookupTac);
       if (request !== lookupRequest.current) return;
       if (found)
         setDraft((d) => ({
@@ -200,7 +212,7 @@ export default function NewRecord() {
     patch({ step: draft.step + 1 });
   }
   async function finish() {
-    if (photoBusy) return;
+    if (photoBusy || (draft.customerId && customerDetail.loading)) return;
     if (!isShopProfileComplete(app.membership?.profile)) {
       setError(t("shopRequired"));
       return;
@@ -211,6 +223,7 @@ export default function NewRecord() {
     latest.current = ready;
     setDraft(ready);
     try {
+      if (ready.customerId && customerDetail.error) throw new Error(customerDetail.error);
       const errors = validateDraft(ready);
       if (errors.length) throw new Error(errors[0]);
       completed.current = true;
@@ -398,7 +411,7 @@ export default function NewRecord() {
             {history.length ? (
               <View style={{ marginTop: 12 }}>
                 <Txt muted size={12}>
-                  {t("history")}: {history.length}
+                  {t("history")}: {history.length}{imeiHistory.value?.next ? "+" : ""}
                 </Txt>
               </View>
             ) : null}
@@ -448,6 +461,10 @@ export default function NewRecord() {
               ))}
             </Disclosure>
           </Card>
+          <PreviousShop
+            imeis={[draft.phone.imei1, draft.phone.imei2]}
+            trigger={previousShopTrigger}
+          />
         </>
       ) : null}
       {draft.step === 1 ? (
@@ -478,29 +495,7 @@ export default function NewRecord() {
               />
             </Disclosure>
           </Card>
-          {choosing ? (
-            <Card>
-              {app.customers.map((c) => (
-                <Pressable
-                  key={c.id}
-                  onPress={() => {
-                    chooseCustomer(c.id);
-                    setChoosing(false);
-                  }}
-                  style={{
-                    padding: 12,
-                    borderBottomWidth: 1,
-                    borderColor: colors.line,
-                  }}
-                >
-                  <Txt>{c.person.name}</Txt>
-                  <Txt muted size={11}>
-                    {c.person.idNumber}
-                  </Txt>
-                </Pressable>
-              ))}
-            </Card>
-          ) : null}
+          {choosing ? <CustomerPicker onSelect={(id)=>void chooseCustomer(id)}/> : null}
           {fingerFind ? (
             <FingerprintPrompt
               mode="identify"
@@ -580,7 +575,9 @@ export default function NewRecord() {
         <View style={{ flex: 1 }}>
           <Button
             label={t(draft.step === 0 ? "next" : "saveRecord")}
-            disabled={draft.step > 0 && !isShopProfileComplete(app.membership?.profile)}
+            disabled={
+              draft.step > 0 && (!isShopProfileComplete(app.membership?.profile) || (!!draft.customerId && customerDetail.loading))
+            }
             loading={busy}
             icon={
               draft.step === 0

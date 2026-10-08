@@ -54,8 +54,9 @@ export class Repository {
   operations() {
     return this.vault.list<Operation>("op:");
   }
-  amendments() {
-    return this.vault.list<Amendment>("amendment:");
+  async amendments(recordId?: string) {
+    const items = await this.vault.list<Amendment>("amendment:", recordId ? { recordId } : undefined);
+    return recordId ? items.filter(a => a.recordId === recordId) : items;
   }
   saveDraft(draft: Draft) {
     return this.vault.batch([{ key: "draft:" + draft.id, value: draft }]);
@@ -338,7 +339,7 @@ export class Repository {
       throw new Error("requiredFields");
     const original = await this.vault.get<Transaction>("record:" + record.id);
     if (!original) throw new Error("noAccess");
-    const history = await this.amendments();
+    const history = await this.amendments(record.id);
     const latest = latestAmendment(history, record.id);
     if ((previousAmendmentId ?? null) !== (latest?.id ?? null))
       throw new Error("conflict");

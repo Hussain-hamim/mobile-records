@@ -51,6 +51,7 @@ const stateKeys: Record<string, TextKey> = {
 export function FingerprintPrompt({
   mode,
   templates,
+  excludeTemplateId,
   onEnrolled,
   onIdentified,
   onClose,
@@ -60,6 +61,7 @@ export function FingerprintPrompt({
 }: {
   mode: "enroll" | "identify" | "check";
   templates: Template[];
+  excludeTemplateId?: string;
   onEnrolled?: (template: string) => void | Promise<void>;
   onIdentified?: (customerId: string) => void;
   onDuplicate?: (customerId: string) => void;
@@ -68,7 +70,7 @@ export function FingerprintPrompt({
   onNew?: () => void;
 }) {
   const { reduceMotion } = useVisualPreferences();
-  const { t, membership, phase, customers } = useApp();
+  const { t, membership, phase, queries } = useApp();
   const [step, setStep] = useState(0),
     [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0),
@@ -76,13 +78,14 @@ export function FingerprintPrompt({
   const [duplicate, setDuplicate] = useState("");
   const [usbStatus, setUsbStatus] = useState<UsbStatus | null>(null);
   const [noEnrollments, setNoEnrollments] = useState(false);
-  const latest = useRef({ templates, mode, onEnrolled, onIdentified, t });
+  const latest = useRef({ templates, mode, onEnrolled, onIdentified, t, queries, excludeTemplateId });
   const closing = useRef(Promise.resolve());
   const readerState = useRef("connecting");
   useEffect(() => {
-    latest.current = { templates, mode, onEnrolled, onIdentified, t };
+    latest.current = { templates, mode, onEnrolled, onIdentified, t, queries, excludeTemplateId };
   });
   useEffect(() => {
+    const abort = new AbortController();
     let alive = true,
       delivered = false;
     let release: (() => Promise<void>) | undefined;
@@ -125,6 +128,7 @@ export function FingerprintPrompt({
       // onStop hook still cancels if the user actually leaves the application.
       if (readerState.current === "permission") return;
       alive = false;
+      abort.abort();
       setError(latest.current.t("fpInterrupted"));
       if (release) closing.current = release();
     });
@@ -132,10 +136,10 @@ export function FingerprintPrompt({
       try {
         await closing.current;
         if (!alive || phase !== "ready") return;
-        if (
-          latest.current.mode === "identify" &&
-          !latest.current.templates.length
-        ) {
+        const stored = latest.current.mode === "check" ? [] : await latest.current.queries!.fingerprintTemplates(abort.signal);
+        if (!alive) return;
+        const templates = [...new Map([...stored, ...latest.current.templates].map(f => [f.id,f])).values()].filter(f => f.id !== latest.current.excludeTemplateId);
+        if (latest.current.mode === "identify" && !templates.length) {
           setNoEnrollments(true);
           throw new Error("fpNoEnrolled");
         }
@@ -146,7 +150,7 @@ export function FingerprintPrompt({
           setStatus("success");
           return;
         }
-        await loadFingerprintTemplates(latest.current.templates);
+        await loadFingerprintTemplates(templates);
         if (!alive) return;
         setStatus("ready");
         if (latest.current.mode === "enroll") {
@@ -190,6 +194,7 @@ export function FingerprintPrompt({
     })();
     return () => {
       alive = false;
+      abort.abort();
       // Completed feedback can finish while the profile opens or the modal closes.
       // Cancellation/retry stops pending imports and any rejection sound.
       if (!delivered) stopFingerprintSound();
@@ -307,11 +312,10 @@ export function FingerprintPrompt({
         <Notice message={error} tone="error" />
         {error ? (
           <View style={{ gap: 12 }}>
-            {duplicate && customers.some((c) => c.id === duplicate) ? (
+            {duplicate ? (
               <Card>
                 <Txt bold>
-                  {customers.find((c) => c.id === duplicate)?.person.name ??
-                    t("customers")}
+                  {t("customers")}
                 </Txt>
                 <Button
                   label={t("viewCustomer")}
