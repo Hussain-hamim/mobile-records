@@ -1,6 +1,83 @@
 import type { Language } from "../domain/models";
 import { digits } from "../domain/validation";
 const copy = {
+  saleDraftChanged: [
+    "Details changed while checking. Review and save again.",
+    "د کتنې پر مهال معلومات بدل شول. بیا یې وګورئ او ثبت کړئ.",
+    "مشخصات هنگام بررسی تغییر کرد. بازبینی و دوباره ذخیره کنید.",
+  ],
+  choosePurchasedPhone: [
+    "Choose purchased phone",
+    "پېرودل شوی موبایل غوره کړئ",
+    "انتخاب موبایل خریداری‌شده",
+  ],
+  purchaseSearch: [
+    "Brand, model, IMEI or purchase reference",
+    "برانډ، ماډل، IMEI یا د پېرود شمېره",
+    "برند، مدل، IMEI یا شماره خرید",
+  ],
+  includeSold: [
+    "Include already sold",
+    "پلورل شوي هم وښایئ",
+    "نمایش فروخته‌شده‌ها",
+  ],
+  purchaseAvailabilityHint: [
+    "Based on your shop’s recorded history. Confirm the phone is still available.",
+    "ستاسو د دوکان د ثبت شوې مخینې له مخې. تایید کړئ چې موبایل لا شته.",
+    "براساس سابقه ثبت‌شده دکان شما. موجود بودن موبایل را تأیید کنید.",
+  ],
+  noPurchasedPhones: [
+    "No matching purchases. You can scan an IMEI or enter the phone manually.",
+    "ورته پېرود ونه موندل شو. IMEI سکین کړئ یا معلومات په لاس ولیکئ.",
+    "خرید مطابقی پیدا نشد. IMEI را اسکن کنید یا مشخصات را دستی وارد کنید.",
+  ],
+  useSavedPhone: [
+    "Use saved phone details",
+    "د موبایل ثبت شوي معلومات وکاروئ",
+    "استفاده از مشخصات ذخیره‌شده",
+  ],
+  sellThisPhone: ["Sell this phone", "دا موبایل وپلورئ", "فروش این موبایل"],
+  detailsFromPurchase: [
+    "Details from purchase",
+    "معلومات له پېرود څخه",
+    "مشخصات از خرید",
+  ],
+  unlinkPurchase: [
+    "Unlink purchase",
+    "د پېرود تړاو لرې کړئ",
+    "حذف ارتباط با خرید",
+  ],
+  previouslySold: [
+    "Already recorded as sold",
+    "مخکې پلورل شوی ثبت دی",
+    "قبلاً فروخته‌شده ثبت شده",
+  ],
+  repeatSaleWarning: [
+    "The latest record for this phone is a sale. Confirm you have the phone and want to record another sale.",
+    "د دې موبایل وروستی ثبت پلور دی. تایید کړئ چې موبایل درسره دی او بل پلور ثبتوئ.",
+    "آخرین سابقه این موبایل فروش است. تأیید کنید موبایل نزد شماست و می‌خواهید فروش دیگری ثبت کنید.",
+  ],
+  confirmRepeatSale: [
+    "Confirm another sale",
+    "بل پلور تایید کړئ",
+    "تأیید فروش مجدد",
+  ],
+  replacePhoneTitle: [
+    "Replace entered phone details?",
+    "لیکل شوي معلومات بدل شي؟",
+    "مشخصات واردشده جایگزین شود؟",
+  ],
+  replacePhoneHint: [
+    "This replaces the phone specifications and IMEIs. Your selling price, notes and buyer details stay as entered.",
+    "د موبایل مشخصات او IMEI بدلېږي. د پلور بیه، یادښتونه او د پېرودونکي معلومات هماغسې پاتې کېږي.",
+    "مشخصات موبایل و IMEI جایگزین می‌شوند. قیمت فروش، یادداشت‌ها و مشخصات خریدار حفظ می‌شوند.",
+  ],
+  purchaseUnavailable: [
+    "This purchase is no longer valid for this phone. Choose the phone again or unlink the purchase to continue manually.",
+    "دا پېرود نور د دې موبایل لپاره معتبر نه دی. موبایل بیا غوره کړئ یا د پېرود تړاو لرې کړئ.",
+    "این خرید دیگر برای این موبایل معتبر نیست. دوباره انتخاب کنید یا ارتباط خرید را حذف کرده و دستی ادامه دهید.",
+  ],
+
   previousShopFullDetails: [
     "View details",
     "بشپړ معلومات وګورئ",

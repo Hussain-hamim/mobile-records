@@ -32,6 +32,7 @@ function Routes() {
           <Stack.Screen name="support" />
           <Stack.Screen name="photos-storage" />
           <Stack.Screen name="shop-profile" />
+          <Stack.Screen name="network" />
         </Stack>
       ) : (
         <AuthScreen />

@@ -1,3 +1,4 @@
+import { assertPurchaseSource } from "../domain/purchased-phones";
 import type {
   Amendment,
   Customer,
@@ -55,8 +56,11 @@ export class Repository {
     return this.vault.list<Operation>("op:");
   }
   async amendments(recordId?: string) {
-    const items = await this.vault.list<Amendment>("amendment:", recordId ? { recordId } : undefined);
-    return recordId ? items.filter(a => a.recordId === recordId) : items;
+    const items = await this.vault.list<Amendment>(
+      "amendment:",
+      recordId ? { recordId } : undefined,
+    );
+    return recordId ? items.filter((a) => a.recordId === recordId) : items;
   }
   saveDraft(draft: Draft) {
     return this.vault.batch([{ key: "draft:" + draft.id, value: draft }]);
@@ -215,6 +219,13 @@ export class Repository {
     // Draft ID is the record ID: repeat taps/recovery cannot create a second record.
     const prior = await this.vault.get<Transaction>("record:" + draft.id);
     if (prior) return prior;
+    if (draft.sourcePurchaseId)
+      assertPurchaseSource(
+        draft,
+        await this.vault.get<Transaction>("record:" + draft.sourcePurchaseId),
+        await this.amendments(draft.sourcePurchaseId),
+        this.membership.shopId,
+      );
     const id = draft.id;
     const customerId = draft.customerId || this.uuid();
     const previous = await this.vault.get<Customer>("customer:" + customerId);
@@ -258,6 +269,9 @@ export class Repository {
       shopId: this.membership.shopId,
       createdBy: this.membership.userId,
       direction: draft.direction,
+      ...(draft.sourcePurchaseId
+        ? { sourcePurchaseId: draft.sourcePurchaseId }
+        : {}),
       phone: {
         ...draft.phone,
         imei1: normalizeImei(draft.phone.imei1),

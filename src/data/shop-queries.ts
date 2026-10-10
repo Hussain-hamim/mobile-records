@@ -1,3 +1,8 @@
+import {
+  purchasedPhoneHistory,
+  matchesPurchasedPhone,
+  type PurchasedPhone,
+} from "../domain/purchased-phones";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Repository } from "./repository";
 import type { Customer, Transaction } from "../domain/models";
@@ -45,6 +50,58 @@ export function shopQueries(repo: Repository, api: SupabaseClient | null) {
     return data as T;
   }
   return {
+    async purchasedPhones(
+      filter: {
+        query?: string;
+        includeSold?: boolean;
+        imeis?: string[];
+        purchaseId?: string;
+      } = {},
+      cursor: RecordCursor | null = null,
+      signal?: AbortSignal,
+    ): Promise<Page<PurchasedPhone, RecordCursor>> {
+      if (cloud)
+        return rpc(
+          "shop_purchased_phones",
+          {
+            p_query: filter.query ?? "",
+            p_include_sold: filter.includeSold ?? false,
+            p_imeis: filter.imeis?.map(normalizeImei).filter(Boolean) ?? null,
+            p_purchase: filter.purchaseId ?? null,
+            p_cursor: cursor,
+          },
+          signal,
+        );
+      const items = purchasedPhoneHistory(
+        await repo.records(),
+        await repo.amendments(),
+      ).filter((item) => {
+        const stamp = (item.purchase ?? item.latest).occurredAt;
+        if (filter.imeis)
+          return filter.imeis.some((id) =>
+            item.imeis.includes(normalizeImei(id)),
+          );
+        if (filter.purchaseId)
+          return item.purchaseIds.includes(filter.purchaseId);
+        return (
+          !!item.purchase &&
+          (filter.includeSold || item.latest.direction === "buy") &&
+          matchesPurchasedPhone(item, filter.query ?? "") &&
+          (!cursor ||
+            stamp < cursor.stamp ||
+            (stamp === cursor.stamp && item.id < cursor.id))
+        );
+      });
+      const shown = items.slice(0, 25),
+        last = shown.at(-1);
+      return {
+        items: shown,
+        next:
+          items.length > 25 && last
+            ? { id: last.id, stamp: (last.purchase ?? last.latest).occurredAt }
+            : null,
+      };
+    },
     async records(
       filter: RecordFilter = {},
       cursor: RecordCursor | null = null,
@@ -89,14 +146,12 @@ export function shopQueries(repo: Repository, api: SupabaseClient | null) {
             b.occurredAt.localeCompare(a.occurredAt) ||
             b.id.localeCompare(a.id),
         );
-      const items = all
-        .slice(0, limit)
-        .map((r) => ({
-          ...r,
-          listVoided: amendments.some(
-            (a) => a.recordId === r.id && a.kind === "void",
-          ),
-        }));
+      const items = all.slice(0, limit).map((r) => ({
+        ...r,
+        listVoided: amendments.some(
+          (a) => a.recordId === r.id && a.kind === "void",
+        ),
+      }));
       const last = items.at(-1);
       return {
         items,

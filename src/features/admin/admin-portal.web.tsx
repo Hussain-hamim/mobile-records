@@ -1,4 +1,5 @@
 import { RecordsPanel } from "./records-panel.web";
+import { NetworkPanel } from "./network-panel.web";
 import { PreviousShopPanel } from "./previous-shop-panel.web";
 import { PhotoStoragePanel, PhotoRequests } from "./photo-storage-panel.web";
 import {
@@ -639,6 +640,7 @@ export default function AdminPortal() {
             ["overview", "grid", "Overview"],
             ["shops", "shop", "Shops & accounts"],
             ["activity", "activity", "Activity"],
+            ["network", "shop", "Shop network"],
           ].map(([id, icon, label]) => (
             <button
               className={section === id ? "active" : ""}
@@ -685,7 +687,9 @@ export default function AdminPortal() {
                 ? "Overview"
                 : section === "shops"
                   ? "Shops & accounts"
-                  : "Activity"}
+                  : section === "network"
+                    ? "Shop network"
+                    : "Activity"}
             </strong>
           </span>
           <span className="ap-environment">
@@ -709,7 +713,9 @@ export default function AdminPortal() {
                   ? "A good day to get things done."
                   : section === "shops"
                     ? "Every shop, in one place."
-                    : "The latest in your workspace."}
+                    : section === "network"
+                      ? "A trusted shop network."
+                      : "The latest in your workspace."}
               </h1>
               <p>
                 {section === "activity"
@@ -756,10 +762,12 @@ export default function AdminPortal() {
           {section === "overview" && (
             <PreviousShopPanel onChanged={() => void refresh()} />
           )}
-          {section !== "activity" && (
+          {section !== "activity" && section !== "network" && (
             <PhotoRequests onOpen={(id) => void openShop(id)} />
           )}
-          {section === "activity" ? (
+          {section === "network" ? (
+            <NetworkPanel />
+          ) : section === "activity" ? (
             <section className="ap-panel">
               <div className="ap-panel-heading">
                 <div>

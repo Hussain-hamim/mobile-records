@@ -60,6 +60,7 @@ export interface FingerprintSkip {
   note: string;
 }
 export interface Draft {
+  sourcePurchaseId?: string;
   id: string;
   direction: Direction;
   phone: Phone;
@@ -89,6 +90,7 @@ export interface ProfileAudit {
   changes: Partial<Record<keyof Person, { before: string; after: string }>>;
 }
 export interface Transaction {
+  sourcePurchaseId?: string;
   id: string;
   reference: string;
   shopId: string;
@@ -108,7 +110,10 @@ export interface Transaction {
 export interface Amendment {
   kind?: "correction" | "void" | "photo";
   previousAmendmentId?: string | null;
-  photoChange?: { slot: "person" | "idFront"; action: "add" | "replace" | "remove" | "adjust" };
+  photoChange?: {
+    slot: "person" | "idFront";
+    action: "add" | "replace" | "remove" | "adjust";
+  };
   id: string;
   recordId: string;
   reason: string;

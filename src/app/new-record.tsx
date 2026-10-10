@@ -1,3 +1,8 @@
+import { useSalePurchase } from "../state/use-sale-purchase";
+import {
+  PurchasedPhonePicker,
+  SalePurchaseConfirmation,
+} from "../components/purchased-phone-picker";
 import { CustomerPicker } from "../components/customer-picker";
 import { useShopQuery } from "../state/use-shop-query";
 import * as Crypto from "expo-crypto";
@@ -56,6 +61,7 @@ export default function NewRecord() {
     draft?: string;
     customer?: string;
     scan?: string;
+    purchase?: string;
   }>();
   const [draft, setDraft] = useState<Draft>(
     () =>
@@ -75,6 +81,11 @@ export default function NewRecord() {
         step: 0,
       },
   );
+  const sale = useSalePurchase(
+    draft,
+    setDraft,
+    params.draft ? undefined : params.purchase,
+  );
   const [scanner, setScanner] = useState<"id" | "imei" | null>(
     params.scan === "imei" ? "imei" : null,
   );
@@ -83,12 +94,22 @@ export default function NewRecord() {
   const secondImeiVisible = showSecondImei || Boolean(draft.phone.imei2);
   const [choosing, setChoosing] = useState(false);
   const [fingerFind, setFingerFind] = useState(false);
-  const customerDetail = useShopQuery(() => app.queries!.customer(draft.customerId), `${app.membership?.shopId}:${app.dataVersion}:${draft.customerId}`, !!app.queries && !!draft.customerId);
+  const customerDetail = useShopQuery(
+    () => app.queries!.customer(draft.customerId),
+    `${app.membership?.shopId}:${app.dataVersion}:${draft.customerId}`,
+    !!app.queries && !!draft.customerId,
+  );
   const currentCustomer = customerDetail.value ?? undefined;
   const [appliedPreset, setAppliedPreset] = useState("");
-  if (!params.draft && params.customer && currentCustomer?.id === params.customer && appliedPreset !== params.customer) {
+  if (
+    !params.draft &&
+    params.customer &&
+    currentCustomer?.id === params.customer &&
+    appliedPreset !== params.customer
+  ) {
     setAppliedPreset(params.customer);
-    if (!draft.customer.name.trim()) setDraft({...draft,customer:{...currentCustomer.person}});
+    if (!draft.customer.name.trim())
+      setDraft({ ...draft, customer: { ...currentCustomer.person } });
   }
   const fingers = draftFingerprints(draft, currentCustomer);
   async function chooseCustomer(id: string) {
@@ -96,10 +117,20 @@ export default function NewRecord() {
     try {
       const c = await app.queries!.customer(id);
       if (!c) throw new Error("empty");
-      patch({ customer: {...c.person}, customerId:c.id, fingerprints:[], fingerprintTemplate:undefined, fingerprintSkip:undefined, customerConfirmed:true });
+      patch({
+        customer: { ...c.person },
+        customerId: c.id,
+        fingerprints: [],
+        fingerprintTemplate: undefined,
+        fingerprintSkip: undefined,
+        customerConfirmed: true,
+      });
       setChoosing(false);
-    } catch(e) {setError(errorText(e,t));}
-    finally {setBusy(false);}
+    } catch (e) {
+      setError(errorText(e, t));
+    } finally {
+      setBusy(false);
+    }
   }
   const [error, setError] = useState("");
   const [hint, setHint] = useState("");
@@ -143,24 +174,51 @@ export default function NewRecord() {
     [persist],
   );
   function patch(values: Partial<Draft>) {
-    setDraft((d) => ({ ...d, ...values }));
+    if (values.direction) {
+      sale.invalidate();
+      lookupRequest.current++;
+    }
+    setDraft((d) => ({
+      ...d,
+      ...values,
+      ...(values.direction === "buy" ? { sourcePurchaseId: undefined } : {}),
+    }));
   }
   function phone(key: keyof Phone, value: string) {
+    sale.invalidate();
     if (key === "imei1" || key === "imei2") {
       lookupRequest.current++;
       setBusy(false);
       setHint("");
     }
-    setDraft((d) => ({ ...d, phone: { ...d.phone, [key]: value } }));
+    setDraft((d) => ({
+      ...d,
+      ...(key === "imei1" || key === "imei2"
+        ? { sourcePurchaseId: undefined }
+        : {}),
+      phone: { ...d.phone, [key]: value },
+    }));
   }
   function fillDemo() {
     if (!app.demo) return;
-    setDraft(fillDemoStep);
+    sale.invalidate();
+    setDraft((d) => ({
+      ...fillDemoStep(d),
+      sourcePurchaseId: d.step === 0 ? undefined : d.sourcePurchaseId,
+    }));
     setError("");
     setHint("");
     setChoosing(false);
   }
-  const imeiHistory = useShopQuery(() => app.queries!.records({imei:normalizeImei(draft.phone.imei1),limit:25}), `${app.membership?.shopId}:${app.dataVersion}:${normalizeImei(draft.phone.imei1)}`, !!app.queries && /^\d{15}$/.test(normalizeImei(draft.phone.imei1)));
+  const imeiHistory = useShopQuery(
+    () =>
+      app.queries!.records({
+        imei: normalizeImei(draft.phone.imei1),
+        limit: 25,
+      }),
+    `${app.membership?.shopId}:${app.dataVersion}:${normalizeImei(draft.phone.imei1)}`,
+    !!app.queries && /^\d{15}$/.test(normalizeImei(draft.phone.imei1)),
+  );
   const history = imeiHistory.value?.items ?? [];
   async function lookup(
     value = draft.phone.imei1,
@@ -178,8 +236,25 @@ export default function NewRecord() {
         imeis: [pair.imei1, pair.imei2],
         nonce: request,
       });
-      const previous = await app.queries!.records({imei,limit:1});
-      const found = await resolvePhoneSuggestions(imei, previous.items, lookupTac);
+      if (draft.direction === "sell") {
+        const match = (
+          await app.queries!.purchasedPhones({
+            imeis: [imei],
+            includeSold: true,
+          })
+        ).items[0];
+        if (request !== lookupRequest.current) return;
+        if (match?.purchase) {
+          sale.setCandidate(match);
+          return;
+        }
+      }
+      const previous = await app.queries!.records({ imei, limit: 1 });
+      const found = await resolvePhoneSuggestions(
+        imei,
+        previous.items,
+        lookupTac,
+      );
       if (request !== lookupRequest.current) return;
       if (found)
         setDraft((d) => ({
@@ -212,7 +287,13 @@ export default function NewRecord() {
     patch({ step: draft.step + 1 });
   }
   async function finish() {
-    if (photoBusy || (draft.customerId && customerDetail.loading)) return;
+    if (
+      busy ||
+      sale.busy ||
+      photoBusy ||
+      (draft.customerId && customerDetail.loading)
+    )
+      return;
     if (!isShopProfileComplete(app.membership?.profile)) {
       setError(t("shopRequired"));
       return;
@@ -223,9 +304,12 @@ export default function NewRecord() {
     latest.current = ready;
     setDraft(ready);
     try {
-      if (ready.customerId && customerDetail.error) throw new Error(customerDetail.error);
+      if (ready.customerId && customerDetail.error)
+        throw new Error(customerDetail.error);
       const errors = validateDraft(ready);
       if (errors.length) throw new Error(errors[0]);
+      if (!(await sale.beforeSave(ready))) return;
+      if (latest.current !== ready) throw new Error("saleDraftChanged");
       completed.current = true;
       await persist(ready);
       const r = await app.finalize(ready);
@@ -342,6 +426,75 @@ export default function NewRecord() {
               onPress={() => patch({ direction: "sell" })}
             />
           </Row>
+          {draft.direction === "sell" ? (
+            <View style={{ gap: 10, marginBottom: 14 }}>
+              <Button
+                small
+                secondary
+                icon="cellphone-arrow-down"
+                label={t("choosePurchasedPhone")}
+                disabled={busy || sale.busy}
+                onPress={() => sale.setPicking(true)}
+              />
+              {sale.candidate?.purchase ? (
+                <Button
+                  small
+                  label={
+                    t("useSavedPhone") +
+                    " · " +
+                    sale.candidate.purchase.phone.model
+                  }
+                  disabled={sale.busy || busy}
+                  onPress={() => {
+                    lookupRequest.current++;
+                    void sale.choose(sale.candidate!.purchase!.id);
+                  }}
+                />
+              ) : null}
+              {draft.sourcePurchaseId ? (
+                <Row>
+                  <Txt muted size={12} style={{ flex: 1 }}>
+                    {t("detailsFromPurchase")}{" "}
+                    {sale.source.value?.record.reference ?? "…"}
+                  </Txt>
+                  <IconButton
+                    icon="close"
+                    label={t("unlinkPurchase")}
+                    onPress={() => {
+                      sale.invalidate();
+                      patch({ sourcePurchaseId: undefined });
+                    }}
+                  />
+                </Row>
+              ) : null}
+              <Notice
+                message={
+                  sale.error ||
+                  (sale.source.error
+                    ? errorText(new Error(sale.source.error), t)
+                    : "")
+                }
+                tone="error"
+              />
+              {sale.error && sale.retryId ? (
+                <Button
+                  small
+                  secondary
+                  label={t("previousShopRetry")}
+                  disabled={sale.busy}
+                  onPress={() => void sale.choose(sale.retryId!)}
+                />
+              ) : null}
+              {sale.source.error ? (
+                <Button
+                  small
+                  secondary
+                  label={t("previousShopRetry")}
+                  onPress={sale.source.retry}
+                />
+              ) : null}
+            </View>
+          ) : null}
           <Card style={recordSectionStyles.imei}>
             <SectionTitle
               title={t("scanImei")}
@@ -411,7 +564,8 @@ export default function NewRecord() {
             {history.length ? (
               <View style={{ marginTop: 12 }}>
                 <Txt muted size={12}>
-                  {t("history")}: {history.length}{imeiHistory.value?.next ? "+" : ""}
+                  {t("history")}: {history.length}
+                  {imeiHistory.value?.next ? "+" : ""}
                 </Txt>
               </View>
             ) : null}
@@ -495,7 +649,9 @@ export default function NewRecord() {
               />
             </Disclosure>
           </Card>
-          {choosing ? <CustomerPicker onSelect={(id)=>void chooseCustomer(id)}/> : null}
+          {choosing ? (
+            <CustomerPicker onSelect={(id) => void chooseCustomer(id)} />
+          ) : null}
           {fingerFind ? (
             <FingerprintPrompt
               mode="identify"
@@ -576,7 +732,9 @@ export default function NewRecord() {
           <Button
             label={t(draft.step === 0 ? "next" : "saveRecord")}
             disabled={
-              draft.step > 0 && (!isShopProfileComplete(app.membership?.profile) || (!!draft.customerId && customerDetail.loading))
+              draft.step > 0 &&
+              (!isShopProfileComplete(app.membership?.profile) ||
+                (!!draft.customerId && customerDetail.loading))
             }
             loading={busy}
             icon={
@@ -596,6 +754,21 @@ export default function NewRecord() {
           {t(app.demo ? "demoDraftHint" : "autoSaved")}
         </Txt>
       </Row>
+      {sale.picking ? (
+        <PurchasedPhonePicker
+          busy={sale.busy}
+          error={sale.error}
+          onClose={() => {
+            sale.cancel();
+            sale.setPicking(false);
+          }}
+          onSelect={(id) => {
+            lookupRequest.current++;
+            void sale.choose(id);
+          }}
+        />
+      ) : null}
+      <SalePurchaseConfirmation sale={sale} />
       {scanner ? (
         <Scanner
           mode={scanner}

@@ -97,9 +97,10 @@ export default function RecordDetail() {
   const op = app.operations.find(
     (o) => o.kind === "record" && (o.payload as Transaction).id === record.id,
   );
-  const effectivePhone =
+  const effectiveRecord =
     corrections.filter((a) => !a.kind || a.kind === "correction").at(-1)
-      ?.snapshot.phone ?? record.phone;
+      ?.snapshot ?? record;
+  const effectivePhone = effectiveRecord.phone;
   return (
     <Screen>
       <Heading
@@ -124,6 +125,20 @@ export default function RecordDetail() {
         voided={voided}
         corrected={corrections.some((a) => !a.kind || a.kind === "correction")}
       />
+      {!voided && effectiveRecord.direction === "buy" ? (
+        <View style={{ marginBottom: 16 }}>
+          <Button
+            icon="arrow-top-right"
+            label={t("sellThisPhone")}
+            onPress={() =>
+              router.push({
+                pathname: "/new-record",
+                params: { direction: "sell", purchase: record.id },
+              })
+            }
+          />
+        </View>
+      ) : null}
       <Card>
         <SectionTitle title={t("customerDetails")} icon="account-outline" />
         <Txt bold size={20}>

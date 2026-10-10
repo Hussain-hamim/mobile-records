@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { Image, Pressable, StyleSheet, View } from "react-native";
 import { FingerprintPrompt } from "../../components/fingerprint-prompt";
+import { networkText } from "../../features/network/strings";
 import { HomeInsights } from "../../components/home-insights";
 import { ShopProfileNotice } from "../../components/shop-profile-notice";
 import { RecordRow } from "../../components/record-row";
@@ -69,6 +70,14 @@ export default function Home() {
         {app.membership?.profile.shopName || t("home")}
       </Txt>
       <ShopProfileNotice />
+      <View style={{ marginBottom: 18 }}>
+        <Button
+          secondary
+          icon="storefront-outline"
+          label={networkText(app.language, "title")}
+          onPress={() => router.push("/network")}
+        />
+      </View>
       <Row style={{ gap: 12, alignItems: "stretch", marginBottom: 16 }}>
         {(["buy", "sell"] as const).map((direction) => {
           const buy = direction === "buy";
