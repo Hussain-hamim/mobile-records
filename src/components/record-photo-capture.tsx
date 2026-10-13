@@ -113,7 +113,6 @@ export function RecordPhotoCapture({
         title={title}
         action={
           <Button
-            small
             secondary
             label={t("close")}
             disabled={busy}

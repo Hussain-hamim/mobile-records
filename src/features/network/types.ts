@@ -1,4 +1,12 @@
 export type NetworkKind = "offer" | "request";
+export const NETWORK_PAGE_SIZE = 20;
+export type NetworkConfirmation = {
+  action: string;
+  data: Record<string, unknown>;
+  title: string;
+  hint?: string;
+  reason?: boolean;
+};
 export type NetworkSection = "directory" | "connections" | "board" | "audit";
 export type BusinessDevice = {
   brand: string;

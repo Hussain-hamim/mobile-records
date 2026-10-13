@@ -1,7 +1,8 @@
 import Animated, { FadeIn } from "react-native-reanimated";
 import { useVisualPreferences } from "./visual-effects";
 import { useEffect, useRef, useState } from "react";
-import { AppState, Modal, View } from "react-native";
+import { AppState, View } from "react-native";
+import { ScreenModal } from "./screen-modal";
 import { router } from "expo-router";
 import {
   enrollFingerprint,
@@ -219,7 +220,7 @@ export function FingerprintPrompt({
     else router.push({ pathname: "/customer/[id]", params: { id } });
   }
   return (
-    <Modal
+    <ScreenModal
       animationType={reduceMotion ? "none" : "slide"}
       onRequestClose={onClose}
     >
@@ -233,7 +234,7 @@ export function FingerprintPrompt({
                 : "scanFingerprint",
           )}
           action={
-            <Button label={t("close")} small secondary onPress={onClose} />
+            <Button label={t("close")} secondary onPress={onClose} />
           }
         />
         <Card
@@ -367,6 +368,6 @@ export function FingerprintPrompt({
           <Notice message={t("fpReaderReady")} />
         ) : null}
       </Screen>
-    </Modal>
+    </ScreenModal>
   );
 }

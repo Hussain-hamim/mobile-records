@@ -2,10 +2,12 @@ import { useState } from "react";
 import type { Customer, Person } from "../domain/models";
 import { contactFields } from "../domain/edit-policy";
 import { useApp } from "../state/app-context";
+import { useSuccessFeedback } from "./success-feedback";
 import { PersonFields } from "./person-fields";
 import { Button, Card, Field, Notice, Txt, errorText } from "./ui";
 
 export function CustomerEditor({ customer }: { customer: Customer }) {
+  const showSuccess = useSuccessFeedback();
   const app = useApp(),
     { t } = app;
   const [baseline, setBaseline] = useState<Customer | null>(null);
@@ -68,7 +70,10 @@ export function CustomerEditor({ customer }: { customer: Customer }) {
               baseline.version,
               baseline.person,
             )
-            .then(() => setBaseline(null))
+            .then(() => {
+              setBaseline(null);
+              showSuccess(t("customerUpdated"));
+            })
             .catch((e) => setError(errorText(e, t)))
             .finally(() => setBusy(false));
         }}

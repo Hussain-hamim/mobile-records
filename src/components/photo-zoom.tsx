@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Image, Modal, ScrollView, View } from "react-native";
+import { Image, ScrollView, View } from "react-native";
+import { ScreenModal } from "./screen-modal";
 import { useApp } from "../state/app-context";
 import { Button, Screen, Row } from "./ui";
 
@@ -29,7 +30,7 @@ export function PhotoZoom({
         }}
       />
       {open ? (
-        <Modal onRequestClose={() => setOpen(false)}>
+        <ScreenModal onRequestClose={() => setOpen(false)}>
           <Screen scroll={false}>
             <Row style={{ justifyContent: "space-between", marginBottom: 16 }}>
               <Button
@@ -46,7 +47,7 @@ export function PhotoZoom({
                 disabled={zoom >= 4}
                 onPress={() => setZoom(Math.min(4, zoom + 1))}
               />
-              <Button small label={t("close")} onPress={() => setOpen(false)} />
+              <Button label={t("close")} onPress={() => setOpen(false)} />
             </Row>
             <View
               style={{ flex: 1 }}
@@ -72,7 +73,7 @@ export function PhotoZoom({
               </ScrollView>
             </View>
           </Screen>
-        </Modal>
+        </ScreenModal>
       ) : null}
     </>
   );

@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { emptyShop } from "../domain/models";
 import { isShopProfileComplete } from "../domain/shop-profile";
 import { useApp } from "../state/app-context";
+import { useSuccessFeedback } from "./success-feedback";
 import { PersonFields } from "./person-fields";
 import {
   Button,
@@ -17,6 +18,7 @@ import {
 
 export function ShopProfileScreen() {
   const app = useApp();
+  const showSuccess = useSuccessFeedback();
   const { t } = app;
   const [profile, setProfile] = useState(() => ({
     ...emptyShop(),
@@ -42,6 +44,7 @@ export function ShopProfileScreen() {
     try {
       await app.saveProfile(profile);
       back();
+      showSuccess(t("shopProfileSaved"));
     } catch (e) {
       setError(errorText(e, t));
     } finally {

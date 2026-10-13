@@ -1,3 +1,4 @@
+import { NETWORK_PAGE_SIZE } from "./types";
 import type {
   NetworkCall,
   NetworkShop,
@@ -98,9 +99,13 @@ export function demoNetwork(shopId: string): NetworkCall {
           JSON.stringify(i).toLowerCase().includes(query),
         );
       const offset = Number(d.offset ?? 0);
+      const limit = Math.max(
+        1,
+        Math.min(Number(d.limit ?? NETWORK_PAGE_SIZE), NETWORK_PAGE_SIZE),
+      );
       result = {
-        items: items.slice(offset, offset + 25),
-        next: items.length > offset + 25 ? offset + 25 : null,
+        items: items.slice(offset, offset + limit),
+        next: items.length > offset + limit ? offset + limit : null,
       };
     } else if (action === "profile") {
       Object.assign(status.profile!, {

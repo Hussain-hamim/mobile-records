@@ -9,11 +9,14 @@ import {
 } from "../components/visual-effects";
 import { colors } from "../components/ui";
 import { AppProvider, useApp } from "../state/app-context";
+import { SuccessFeedbackProvider } from "../components/success-feedback";
 function Routes() {
-  const { phase } = useApp();
+  const { phase, membership, demo } = useApp();
   const { reduceMotion } = useVisualPreferences();
   return (
-    <>
+    <SuccessFeedbackProvider
+      key={`${phase}:${demo}:${membership?.shopId}:${membership?.userId}`}
+    >
       <StatusBar style="dark" />
       {phase === "loading" ? (
         <AppLoadingScreen />
@@ -37,7 +40,7 @@ function Routes() {
       ) : (
         <AuthScreen />
       )}
-    </>
+    </SuccessFeedbackProvider>
   );
 }
 export default function Layout() {

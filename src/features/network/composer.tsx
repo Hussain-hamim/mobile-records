@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Modal, View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import {
   Button,
@@ -124,165 +125,171 @@ export function NetworkComposer({
       animationType="slide"
       onRequestClose={() => !busy && onClose()}
     >
-      <Screen>
-        <Heading
-          title={nt(preview ? "preview" : "newPost")}
-          action={
-            <Button
-              small
-              secondary
-              disabled={busy}
-              label={nt("close")}
-              onPress={onClose}
-            />
-          }
-        />
-        <Notice message={nt("privacy")} />
-        <Notice message={error} tone="error" />
-        {preview ? (
-          <>
-            <Card>
-              <Txt bold>{nt(kind)}</Txt>
-              <DeviceDetails device={payload} />
-              <Txt bold>{nt("to")}</Txt>
-              {selected.map((s) => (
-                <Txt key={s.shop_id}>
-                  {s.name} · {s.area}
-                </Txt>
-              ))}
-            </Card>
-            <Notice message={nt("postHint")} />
-            <Row>
+      {/* Native modals need safe-area measurements from their own window. */}
+      <SafeAreaProvider>
+        <Screen>
+          <Heading
+            title={nt(preview ? "preview" : "newPost")}
+            action={
               <Button
                 secondary
                 disabled={busy}
-                label={nt("back")}
-                onPress={() => setPreview(false)}
+                label={nt("close")}
+                onPress={onClose}
               />
-              <Button
-                loading={busy}
-                label={nt("send")}
-                onPress={() => void submit()}
-              />
-            </Row>
-          </>
-        ) : (
-          <>
-            <Row style={{ gap: 8, marginBottom: 16 }}>
-              {(["offer", "request"] as const).map((k) => (
-                <Chip
-                  key={k}
-                  active={kind === k}
-                  label={nt(k)}
-                  onPress={() => setKind(k)}
-                />
-              ))}
-            </Row>
-            <Notice message={nt("postHint")} />
-            {kind === "offer" && (
-              <Button
-                secondary
-                small
-                label={app.t("choosePurchasedPhone")}
-                onPress={() => setPicker(true)}
-              />
-            )}
-            <Card>
-              {(["brand", "model", "color", "storage"] as const).map((k) => (
-                <Field
-                  key={k}
-                  label={app.t(k)}
-                  value={device[k]}
-                  maxLength={80}
-                  onChangeText={(v) => setDevice((d) => ({ ...d, [k]: v }))}
-                />
-              ))}
-              <Field
-                label={app.t("price")}
-                value={device.price}
-                numeric
-                maxLength={13}
-                onChangeText={(price) => setDevice((d) => ({ ...d, price }))}
-              />
-            </Card>
-            <Heading title={nt("recipients")} />
-            {peers.map((s) => (
-              <Card key={s.shop_id}>
-                <Chip
-                  label={s.name}
-                  active={selected.some((p) => p.shop_id === s.shop_id)}
-                  onPress={() =>
-                    setSelected((prev) =>
-                      prev.some((p) => p.shop_id === s.shop_id)
-                        ? prev.filter((p) => p.shop_id !== s.shop_id)
-                        : [...prev, s],
-                    )
-                  }
-                />
-                <Txt muted>{s.area}</Txt>
-              </Card>
-            ))}
-            {!peers.length && !page.loading && <Txt muted>{nt("empty")}</Txt>}
-            {!!page.error && (
-              <>
-                <Notice
-                  message={networkError(app.language, page.error)}
-                  tone="error"
-                />
-                <Button secondary label={nt("refresh")} onPress={page.retry} />
-              </>
-            )}
-            {page.hasMore && (
-              <Button
-                secondary
-                small
-                loading={page.loading}
-                label={nt("more")}
-                onPress={page.loadMore}
-              />
-            )}
-            <Button
-              disabled={page.loading}
-              label={nt("preview")}
-              onPress={review}
-            />
-          </>
-        )}
-        {picker && (
-          <PurchasedPhonePicker
-            busy={busy}
-            error={error}
-            onClose={() => !busy && setPicker(false)}
-            onSelect={(purchaseId) => {
-              if (running.current) return;
-              running.current = true;
-              setBusy(true);
-              void app
-                .queries!.purchasedPhones({ purchaseId })
-                .then((result) => {
-                  if (!active.current) return;
-                  const phone = result.items[0]?.purchase?.phone;
-                  if (!phone) throw new Error("networkUnavailable");
-                  setDevice({
-                    brand: phone.brand,
-                    model: phone.model,
-                    color: phone.color,
-                    storage: phone.storage,
-                    price: "",
-                  });
-                  setPicker(false);
-                })
-                .catch((e) => {
-                  if (active.current) setError(networkError(app.language, e));
-                })
-                .finally(() => {
-                  running.current = false;
-                  if (active.current) setBusy(false);
-                });
-            }}
+            }
           />
-        )}
-      </Screen>
+          <Notice message={nt("privacy")} />
+          <Notice message={error} tone="error" />
+          {preview ? (
+            <>
+              <Card>
+                <Txt bold>{nt(kind)}</Txt>
+                <DeviceDetails device={payload} />
+                <Txt bold>{nt("to")}</Txt>
+                {selected.map((s) => (
+                  <Txt key={s.shop_id}>
+                    {s.name} · {s.area}
+                  </Txt>
+                ))}
+              </Card>
+              <Notice message={nt("postHint")} />
+              <Row>
+                <Button
+                  secondary
+                  disabled={busy}
+                  label={nt("back")}
+                  onPress={() => setPreview(false)}
+                />
+                <Button
+                  loading={busy}
+                  label={nt("send")}
+                  onPress={() => void submit()}
+                />
+              </Row>
+            </>
+          ) : (
+            <>
+              <Row style={{ gap: 8, marginBottom: 16 }}>
+                {(["offer", "request"] as const).map((k) => (
+                  <Chip
+                    key={k}
+                    active={kind === k}
+                    label={nt(k)}
+                    onPress={() => setKind(k)}
+                  />
+                ))}
+              </Row>
+              <Notice message={nt("postHint")} />
+              {kind === "offer" && (
+                <Button
+                  secondary
+                  small
+                  label={app.t("choosePurchasedPhone")}
+                  onPress={() => setPicker(true)}
+                />
+              )}
+              <Card>
+                {(["brand", "model", "color", "storage"] as const).map((k) => (
+                  <Field
+                    key={k}
+                    label={app.t(k)}
+                    value={device[k]}
+                    maxLength={80}
+                    onChangeText={(v) => setDevice((d) => ({ ...d, [k]: v }))}
+                  />
+                ))}
+                <Field
+                  label={app.t("price")}
+                  value={device.price}
+                  numeric
+                  maxLength={13}
+                  onChangeText={(price) => setDevice((d) => ({ ...d, price }))}
+                />
+              </Card>
+              <Heading title={nt("recipients")} />
+              {peers.map((s) => (
+                <Card key={s.shop_id}>
+                  <Chip
+                    label={s.name}
+                    active={selected.some((p) => p.shop_id === s.shop_id)}
+                    onPress={() =>
+                      setSelected((prev) =>
+                        prev.some((p) => p.shop_id === s.shop_id)
+                          ? prev.filter((p) => p.shop_id !== s.shop_id)
+                          : [...prev, s],
+                      )
+                    }
+                  />
+                  <Txt muted>{s.area}</Txt>
+                </Card>
+              ))}
+              {!peers.length && !page.loading && <Txt muted>{nt("empty")}</Txt>}
+              {!!page.error && (
+                <>
+                  <Notice
+                    message={networkError(app.language, page.error)}
+                    tone="error"
+                  />
+                  <Button
+                    secondary
+                    label={nt("refresh")}
+                    onPress={page.retry}
+                  />
+                </>
+              )}
+              {page.hasMore && (
+                <Button
+                  secondary
+                  small
+                  loading={page.loading}
+                  label={nt("more")}
+                  onPress={page.loadMore}
+                />
+              )}
+              <Button
+                disabled={page.loading}
+                label={nt("preview")}
+                onPress={review}
+              />
+            </>
+          )}
+          {picker && (
+            <PurchasedPhonePicker
+              busy={busy}
+              error={error}
+              onClose={() => !busy && setPicker(false)}
+              onSelect={(purchaseId) => {
+                if (running.current) return;
+                running.current = true;
+                setBusy(true);
+                void app
+                  .queries!.purchasedPhones({ purchaseId })
+                  .then((result) => {
+                    if (!active.current) return;
+                    const phone = result.items[0]?.purchase?.phone;
+                    if (!phone) throw new Error("networkUnavailable");
+                    setDevice({
+                      brand: phone.brand,
+                      model: phone.model,
+                      color: phone.color,
+                      storage: phone.storage,
+                      price: "",
+                    });
+                    setPicker(false);
+                  })
+                  .catch((e) => {
+                    if (active.current) setError(networkError(app.language, e));
+                  })
+                  .finally(() => {
+                    running.current = false;
+                    if (active.current) setBusy(false);
+                  });
+              }}
+            />
+          )}
+        </Screen>
+      </SafeAreaProvider>
     </Modal>
   );
 }

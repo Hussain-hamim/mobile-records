@@ -48,3 +48,22 @@ New indexes may appear as unused until queries accumulate. See
 Substring searches still inspect matching shop rows on the database. Monitor
 query time as shops grow; pagination bounds network and client memory, rather
 than guaranteeing constant database work for every search or aggregate.
+
+## Shop Network
+
+Phone board, directory, connections, and sharing activity return at most 20 items
+per request. The share composer uses the same paged connections query. Search is
+applied on the server before paging. View more explicitly appends the next page;
+scrolling never triggers an automatic fetch. The main lists use FlatList with
+bounded render batches, and the displayed count describes loaded results only.
+
+`20261013065014_shop_network_page_size.sql` must be deployed before releasing this
+client to enable the 20-row cap and connection search. It preserves existing
+authorization and consent checks and leaves admin pagination unchanged. Older
+clients can consume the new page size via the returned `next` offset. Until the
+migration is deployed, the existing backend remains bounded at 25 rows.
+
+Tests cover 41 entries in each network list, the 20/20/1 page boundaries, exact
+final pages, oversized limits, stable activity IDs, filtered and empty results,
+and existing consent/revocation behavior. Offset pagination can shift under
+concurrent writes; refresh restarts the list and appended IDs are deduplicated.

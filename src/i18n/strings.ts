@@ -1,6 +1,19 @@
 import type { Language } from "../domain/models";
 import { digits } from "../domain/validation";
 const copy = {
+  purchaseRecorded: ["Purchase recorded", "پېرود ثبت شو", "خرید ثبت شد"],
+  saleRecorded: ["Sale recorded", "پلور ثبت شو", "فروش ثبت شد"],
+  changesSaved: ["Changes saved", "بدلونونه ثبت شول", "تغییرات ذخیره شد"],
+  customerUpdated: [
+    "Customer updated",
+    "د پېرودونکي معلومات نوي شول",
+    "مشخصات مشتری به‌روز شد",
+  ],
+  shopProfileSaved: [
+    "Shop details saved",
+    "د دوکان معلومات ثبت شول",
+    "مشخصات دکان ذخیره شد",
+  ],
   saleDraftChanged: [
     "Details changed while checking. Review and save again.",
     "د کتنې پر مهال معلومات بدل شول. بیا یې وګورئ او ثبت کړئ.",

@@ -1,6 +1,7 @@
 import { useVisualPreferences } from "./visual-effects";
 import { useEffect, useRef, useState } from "react";
-import { Image, Linking, Modal, Platform, View } from "react-native";
+import { Image, Linking, Platform, View } from "react-native";
+import { ScreenModal } from "./screen-modal";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useApp } from "../state/app-context";
 import type { Person } from "../domain/models";
@@ -190,14 +191,16 @@ export function TazkiraScanner({
     }
   }
   return (
-    <Modal animationType={reduceMotion ? "none" : "slide"} onRequestClose={() => void close()}>
+    <ScreenModal
+      animationType={reduceMotion ? "none" : "slide"}
+      onRequestClose={() => void close()}
+    >
       <Screen resetKey={photo ? "result" : "camera"}>
         <Heading
           title={t("scanId")}
           action={
             <Button
               label={t("close")}
-              small
               secondary
               onPress={() => void close()}
             />
@@ -404,6 +407,6 @@ export function TazkiraScanner({
         <View style={{ height: 16 }} />
         <Button secondary label={t("mrzManual")} onPress={() => void close()} />
       </Screen>
-    </Modal>
+    </ScreenModal>
   );
 }

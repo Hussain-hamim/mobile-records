@@ -8,6 +8,7 @@ import { useState } from "react";
 import { View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useApp } from "../../state/app-context";
+import { useSuccessFeedback } from "../../components/success-feedback";
 import {
   Button,
   Chip,
@@ -38,6 +39,7 @@ import {
 import { PreviousShop } from "../../components/previous-shop";
 export default function RecordDetail() {
   const app = useApp();
+  const showSuccess = useSuccessFeedback();
   const { t } = app;
   const { id } = useLocalSearchParams<{ id: string }>();
   const detail = useShopQuery(
@@ -477,6 +479,7 @@ export default function RecordDetail() {
                         await app.amend(record, reason, editBase, "void");
                         setVoiding(false);
                         setReason("");
+                        showSuccess(t("recordVoided"), { confetti: false });
                       })
                     }
                   />
@@ -546,6 +549,7 @@ export default function RecordDetail() {
                       await app.amend(edit, reason, editBase);
                       setEdit(null);
                       setReason("");
+                      showSuccess(t("changesSaved"));
                     })
                   }
                 />

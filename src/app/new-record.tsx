@@ -49,12 +49,14 @@ import {
 import { normalizeImei, validateDraft } from "../domain/validation";
 import { lookupTac } from "../services/tac";
 import { useApp } from "../state/app-context";
+import { useSuccessFeedback } from "../components/success-feedback";
 import {
   PreviousShop,
   type PreviousShopTrigger,
 } from "../components/previous-shop";
 export default function NewRecord() {
   const app = useApp();
+  const showSuccess = useSuccessFeedback();
   const { t } = app;
   const params = useLocalSearchParams<{
     direction?: string;
@@ -314,6 +316,9 @@ export default function NewRecord() {
       await persist(ready);
       const r = await app.finalize(ready);
       router.replace({ pathname: "/record/[id]", params: { id: r.id } });
+      showSuccess(
+        t(r.direction === "sell" ? "saleRecorded" : "purchaseRecorded"),
+      );
     } catch (e) {
       completed.current = false;
       setError(errorText(e, t));

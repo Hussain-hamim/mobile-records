@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   Image,
   Linking,
-  Modal,
   Pressable,
   View,
   type ViewStyle,
@@ -31,6 +30,7 @@ import {
 import { useApp } from "../state/app-context";
 import { customerPhotoAspect, tazkiraPhotoAspect } from "../domain/photo-frame";
 import { RecordPhotoCapture } from "./record-photo-capture";
+import { ScreenModal } from "./screen-modal";
 import {
   Button,
   Card,
@@ -348,7 +348,7 @@ function RecordPhotoContent({
         />
       ) : null}
       {selected ? (
-        <Modal
+        <ScreenModal
           animationType="slide"
           onRequestClose={() => {
             if (!busy && !editorUri) {
@@ -374,7 +374,6 @@ function RecordPhotoContent({
                 action={
                   !editorUri ? (
                     <Button
-                      small
                       secondary
                       disabled={busy}
                       label={t("close")}
@@ -608,7 +607,7 @@ function RecordPhotoContent({
               )}
             </Screen>
           )}
-        </Modal>
+        </ScreenModal>
       ) : error ? (
         <Notice message={error} tone="error" />
       ) : null}

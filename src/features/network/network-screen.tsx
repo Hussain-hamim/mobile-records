@@ -1,12 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Modal, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  Pressable,
+  View,
+} from "react-native";
 import { router } from "expo-router";
-import * as Crypto from "expo-crypto";
 import {
   Button,
   Card,
   Chip,
   Field,
+  Empty,
+  IconButton,
   Heading,
   Notice,
   Row,
@@ -18,26 +25,19 @@ import {
 import { useApp } from "../../state/app-context";
 import { useShopQuery } from "../../state/use-shop-query";
 import { useServerPage } from "../../state/use-server-page";
-import { formatDate } from "../../domain/format";
 import { networkApi, networkPage } from "./api";
 import { demoNetwork } from "./demo";
 import { networkError, networkText, type NetworkText } from "./strings";
-import { NetworkComposer, DeviceDetails } from "./composer";
+import { NetworkComposer } from "./composer";
+import { NetworkBadge, NetworkCard } from "./network-card";
+import { useSuccessFeedback } from "../../components/success-feedback";
 import type {
   NetworkStatus,
   NetworkSection,
-  NetworkShop,
+  NetworkConfirmation,
   NetworkKind,
-  NetworkRow,
 } from "./types";
 
-type Confirm = {
-  action: string;
-  data: Record<string, unknown>;
-  title: string;
-  hint?: string;
-  reason?: boolean;
-};
 export function NetworkScreen() {
   const app = useApp();
   return app.membership ? (
@@ -47,6 +47,7 @@ export function NetworkScreen() {
   ) : null;
 }
 function NetworkSession() {
+  const showSuccess = useSuccessFeedback();
   const app = useApp(),
     { membership, language, t } = app,
     shopId = membership!.shopId;
@@ -59,12 +60,12 @@ function NetworkSession() {
     [query, setQuery] = useState(""),
     [revision, setRevision] = useState(0),
     [error, setError] = useState(""),
-    [success, setSuccess] = useState(false),
     [busy, setBusy] = useState(false);
   const [compose, setCompose] = useState<{
       kind: NetworkKind;
     } | null>(null),
-    [confirm, setConfirm] = useState<Confirm | null>(null),
+    [confirm, setConfirm] = useState<NetworkConfirmation | null>(null),
+    [expandedId, setExpandedId] = useState<string | null>(null),
     [reason, setReason] = useState("");
   const alive = useRef(true),
     running = useRef(false);
@@ -81,12 +82,18 @@ function NetworkSession() {
   const profile = status.value?.profile,
     enabled = profile?.enabled && profile.status === "approved",
     owner = status.value?.owner;
+  const canList =
+    section !== "settings" &&
+    !status.loading &&
+    !status.error &&
+    (!!enabled ||
+      section === "connections" ||
+      (section === "audit" && !!owner));
   const page = useServerPage(
     (offset: number | null, signal: AbortSignal) =>
       networkPage(call, section, offset, query, signal),
     `${shopId}:${section}:${query}:${revision}`,
-    section !== "settings" &&
-      (!!enabled || section === "connections" || section === "audit"),
+    canList,
   );
   const refresh = () => {
     setRevision((n) => n + 1);
@@ -97,14 +104,17 @@ function NetworkSession() {
     running.current = true;
     setBusy(true);
     setError("");
-    setSuccess(false);
     try {
       await call(action, data);
       if (!alive.current) return false;
       setConfirm(null);
       setReason("");
       refresh();
-      setSuccess(true);
+      showSuccess(nt("sent"), {
+        confetti:
+          ["profile", "connect", "accept"].includes(action) ||
+          (action === "permission" && data.enabled === true),
+      });
       return true;
     } catch (e) {
       if (alive.current) setError(networkError(language, e));
@@ -114,347 +124,316 @@ function NetworkSession() {
       if (alive.current) setBusy(false);
     }
   }
-  function ask(value: Confirm) {
+  function ask(value: NetworkConfirmation) {
     setReason("");
     setConfirm(value);
     setError("");
   }
-  const date = (s: string) => formatDate(s, language, app.gregorian);
-  function row(item: NetworkRow) {
-    if ("connection_status" in item || "area" in item) {
-      const s = item as NetworkShop,
-        connected = s.connection_status === "accepted" && !s.blocked;
-      return (
-        <Card>
-          <Row style={{ justifyContent: "space-between" }}>
-            <View style={{ flex: 1 }}>
-              <Txt bold size={18}>
-                {s.name}
-              </Txt>
-              <Txt muted>{s.area}</Txt>
-              {s.contact ? <Txt>{s.contact}</Txt> : null}
-            </View>
-            <Txt size={11} color={colors.green}>
-              {s.status === "approved" ? nt("approved") : nt(s.status)}
-            </Txt>
-          </Row>
-          {s.connection_status === "pending" && (
-            <Txt muted>{nt("pending")}</Txt>
-          )}
-          <Row style={{ flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-            {owner && s.blocked ? (
-              <Button
-                small
-                secondary
-                label={nt("unblock")}
-                disabled={busy}
-                onPress={() =>
-                  ask({
-                    action: "unblock",
-                    data: { target: s.shop_id },
-                    title: nt("unblock"),
-                  })
-                }
-              />
-            ) : (
-              <>
-                {owner && !connected && s.connection_status !== "pending" && (
-                  <Button
-                    small
-                    label={nt("connect")}
-                    disabled={busy}
-                    onPress={() =>
-                      ask({
-                        action: "connect",
-                        data: {
-                          target: s.shop_id,
-                          version: s.connection_version ?? 0,
-                        },
-                        title: nt("connect"),
-                        hint: `${s.name} · ${profile?.name ?? ""}`,
-                      })
-                    }
-                  />
-                )}
-                {owner &&
-                  s.connection_status === "pending" &&
-                  s.requested_by !== shopId && (
-                    <Button
-                      small
-                      label={nt("accept")}
-                      disabled={busy}
-                      onPress={() =>
-                        ask({
-                          action: "accept",
-                          data: {
-                            target: s.shop_id,
-                            version: s.connection_version,
-                          },
-                          title: nt("accept"),
-                          hint: s.name,
-                        })
-                      }
-                    />
-                  )}
-                {owner && (connected || s.connection_status === "pending") && (
-                  <Button
-                    small
-                    secondary
-                    disabled={busy}
-                    label={nt("disconnect")}
-                    onPress={() =>
-                      ask({
-                        action: "disconnect",
-                        data: {
-                          target: s.shop_id,
-                          version: s.connection_version,
-                        },
-                        title: nt("disconnect"),
-                        hint: nt("disconnectHint"),
-                      })
-                    }
-                  />
-                )}
-                {owner && (
-                  <Button
-                    small
-                    secondary
-                    disabled={busy}
-                    label={nt("block")}
-                    onPress={() =>
-                      ask({
-                        action: "block",
-                        data: { target: s.shop_id },
-                        title: nt("block"),
-                        hint: nt("disconnectHint"),
-                      })
-                    }
-                  />
-                )}
-              </>
-            )}
-            <Button
-              small
-              secondary
-              label={nt("report")}
-              onPress={() =>
-                ask({
-                  action: "report",
-                  data: { target: s.shop_id, id: Crypto.randomUUID() },
-                  title: nt("report"),
-                  reason: true,
-                })
-              }
-            />
-          </Row>
-        </Card>
-      );
-    }
-    if ("device" in item)
-      return (
-        <Card>
-          <Txt bold color={colors.green}>
-            {nt(item.kind)}
-          </Txt>
-          <Txt muted>{item.name}</Txt>
-          <DeviceDetails device={item.device} />
-          <Txt size={12} muted>
-            {nt("expires")}: {date(item.expires_at)}
-          </Txt>
-          <Row style={{ marginTop: 12 }}>
-            {item.shop_id === shopId && status.value?.canShare ? (
-              <Button
-                small
-                secondary
-                label={nt("closePost")}
-                onPress={() =>
-                  ask({
-                    action: "close-post",
-                    data: { id: item.id },
-                    title: nt("closePost"),
-                  })
-                }
-              />
-            ) : (
-              <Button
-                small
-                secondary
-                label={nt("report")}
-                onPress={() =>
-                  ask({
-                    action: "report",
-                    data: { target: item.shop_id, id: Crypto.randomUUID() },
-                    title: nt("report"),
-                    reason: true,
-                  })
-                }
-              />
-            )}
-          </Row>
-        </Card>
-      );
-    if ("action" in item)
-      return (
-        <Card>
-          <Txt bold>{item.action}</Txt>
-          <Txt muted>{date(item.at)}</Txt>
-          <Txt size={12}>{JSON.stringify(item.details)}</Txt>
-        </Card>
-      );
-    return null;
+  function navigate(next: NetworkSection | "settings") {
+    setSection(next);
+    setQuery("");
+    setExpandedId(null);
+    setError("");
   }
-  return (
-    <Screen scroll={false}>
-      <Heading
-        title={nt("title")}
-        action={
-          <Button
-            small
-            secondary
-            label={nt("back")}
-            onPress={() => router.back()}
-          />
-        }
-      />
-      <Txt muted size={13} style={{ marginBottom: 12 }}>
-        {nt("intro")}
-      </Txt>
-      {app.demo && <Notice message={nt("demo")} />}
-      <Row style={{ flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
-        {(["board", "directory", "connections", "settings"] as const).map(
-          (s) => (
-            <Chip
-              key={s}
-              active={section === s}
-              label={nt(s)}
-              onPress={() => {
-                setSection(s);
-                setQuery("");
-                setSuccess(false);
-              }}
-            />
-          ),
-        )}
-      </Row>
-      {(section === "board" || section === "directory") && enabled && (
-        <SearchField
-          value={query}
-          onChangeText={setQuery}
-          placeholder={nt("search")}
-        />
-      )}
+  const mainSection = section !== "settings" && section !== "audit";
+  const messages = (
+    <>
+      {app.demo ? (
+        <Txt size={11} muted style={{ marginBottom: 12 }}>
+          {nt("demo")}
+        </Txt>
+      ) : null}
       <Notice
         message={
           error || (status.error ? networkError(language, status.error) : "")
         }
         tone="error"
       />
-      {success && <Notice message={nt("sent")} />}
+    </>
+  );
+  return (
+    <Screen scroll={false}>
+      <Row style={{ marginBottom: 16, gap: 10 }}>
+        <IconButton
+          icon={app.rtl ? "arrow-right" : "arrow-left"}
+          label={nt("back")}
+          onPress={() => {
+            if (section === "audit") navigate("settings");
+            else if (section === "settings") navigate("board");
+            else router.back();
+          }}
+        />
+        <Txt bold size={21} style={{ flex: 1 }}>
+          {nt(mainSection ? "title" : section)}
+        </Txt>
+        {section !== "settings" ? (
+          <IconButton
+            icon="cog-outline"
+            label={nt("settings")}
+            onPress={() => navigate("settings")}
+          />
+        ) : null}
+      </Row>
+      {mainSection ? (
+        <Row
+          style={{
+            gap: 4,
+            padding: 4,
+            backgroundColor: colors.paper,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: colors.line,
+            marginBottom: 14,
+          }}
+        >
+          {(["board", "directory", "connections"] as const).map((value) => (
+            <Pressable
+              key={value}
+              accessibilityRole="tab"
+              accessibilityLabel={nt(value)}
+              aria-selected={section === value}
+              onPress={() => navigate(value)}
+              style={({ pressed }) => ({
+                flex: 1,
+                minHeight: 44,
+                justifyContent: "center",
+                paddingHorizontal: 4,
+                paddingVertical: 8,
+                borderRadius: 9,
+                backgroundColor:
+                  section === value
+                    ? colors.green
+                    : pressed
+                      ? colors.mint
+                      : "transparent",
+              })}
+            >
+              <Txt
+                size={12}
+                bold={section === value}
+                color={section === value ? "#fff" : colors.muted}
+                style={{ textAlign: "center" }}
+              >
+                {nt(
+                  value === "board"
+                    ? "phones"
+                    : value === "directory"
+                      ? "shops"
+                      : value,
+                )}
+              </Txt>
+            </Pressable>
+          ))}
+        </Row>
+      ) : null}
+      {mainSection && (enabled || section === "connections") ? (
+        <SearchField
+          value={query}
+          onChangeText={(value) => {
+            setQuery(value);
+            setExpandedId(null);
+          }}
+          placeholder={nt(section === "board" ? "searchPhones" : "searchShops")}
+        />
+      ) : null}
       {section === "settings" ? (
         <FlatList
-          data={[status.value]}
+          style={{ flex: 1 }}
+          data={status.value ? [status.value] : []}
           keyExtractor={() => "settings"}
-          renderItem={({ item }) =>
-            item ? (
-              <NetworkSettings
-                key={item.profile?.version ?? 0}
-                status={item}
-                busy={busy}
-                onSave={(data) => mutate("profile", data)}
-                onPermission={(target, allow) =>
-                  ask({
-                    action: "permission",
-                    data: { target, enabled: allow },
-                    title: nt(allow ? "grant" : "revoke"),
-                  })
-                }
-              />
-            ) : null
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={messages}
+          ListEmptyComponent={
+            status.loading ? <ActivityIndicator color={colors.green} /> : null
           }
+          renderItem={({ item }) => (
+            <NetworkSettings
+              key={item.profile?.version ?? 0}
+              status={item}
+              busy={busy}
+              onSave={(data) => mutate("profile", data)}
+              onPermission={(target, allow) =>
+                ask({
+                  action: "permission",
+                  data: { target, enabled: allow },
+                  title: nt(allow ? "grant" : "revoke"),
+                })
+              }
+            />
+          )}
           ListFooterComponent={
-            <Row style={{ gap: 8 }}>
-              <Button secondary small label={nt("refresh")} onPress={refresh} />
-              {owner && (
+            <View style={{ gap: 12, paddingVertical: 12 }}>
+              {owner ? (
                 <Button
                   secondary
-                  small
+                  icon="history"
                   label={nt("audit")}
-                  onPress={() => setSection("audit")}
+                  onPress={() => navigate("audit")}
                 />
-              )}
-            </Row>
+              ) : null}
+              <Button variant="text" label={nt("refresh")} onPress={refresh} />
+              <Txt muted size={12}>
+                {nt("privacy")}
+              </Txt>
+            </View>
           }
         />
       ) : (
-        <>
-          {!enabled && section !== "connections" && section !== "audit" ? (
-            <Notice message={nt("networkApproval")} />
-          ) : null}
-          <Row
-            style={{
-              justifyContent: "space-between",
-              gap: 8,
-              marginVertical: 10,
-            }}
-          >
-            <Button secondary small label={nt("refresh")} onPress={refresh} />
-            {enabled && status.value?.canShare && (
-              <Button
-                small
-                icon="plus"
-                label={nt("newPost")}
-                onPress={() => setCompose({ kind: "offer" })}
-              />
-            )}
-          </Row>
-          <FlatList
-            data={page.items}
-            renderItem={({ item }) => row(item)}
-            keyExtractor={(item) => item.id}
-            keyboardShouldPersistTaps="handled"
-            style={{ flex: 1 }}
-            ListEmptyComponent={
-              !page.loading ? (
-                <Txt muted>{nt("empty")}</Txt>
-              ) : (
-                <Txt muted>{t("loading")}</Txt>
-              )
-            }
-            ListFooterComponent={
-              <View style={{ gap: 10, paddingVertical: 12 }}>
-                {!!page.error && (
-                  <>
-                    <Notice
-                      message={networkError(language, page.error)}
-                      tone="error"
-                    />
+        <FlatList
+          key={section}
+          data={page.items}
+          renderItem={({ item }) => (
+            <NetworkCard
+              item={item}
+              shopId={shopId}
+              owner={!!owner}
+              canShare={!!status.value?.canShare}
+              busy={busy}
+              expanded={expandedId === item.id}
+              onToggle={() =>
+                setExpandedId((previous) =>
+                  previous === item.id ? null : item.id,
+                )
+              }
+              onAction={ask}
+            />
+          )}
+          keyExtractor={(item) => item.id}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          style={{ flex: 1 }}
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
+          windowSize={7}
+          refreshing={
+            status.loading || (page.loading && page.items.length === 0)
+          }
+          onRefresh={refresh}
+          ListHeaderComponent={
+            <View>
+              {messages}
+              <Row
+                style={{ justifyContent: "space-between", marginBottom: 12 }}
+              >
+                <Txt muted size={12}>
+                  {nt(section)}
+                  {page.items.length
+                    ? ` · ${nt("shown")}: ${page.items.length}`
+                    : ""}
+                </Txt>
+                <IconButton
+                  icon="refresh"
+                  label={nt("refresh")}
+                  onPress={refresh}
+                />
+              </Row>
+              {section === "board" && enabled && status.value?.canShare ? (
+                <View style={{ marginBottom: 16 }}>
+                  <Button
+                    icon="plus"
+                    label={nt("newPost")}
+                    onPress={() => setCompose({ kind: "offer" })}
+                  />
+                </View>
+              ) : null}
+              {!status.loading &&
+              !status.error &&
+              !enabled &&
+              section !== "connections" &&
+              section !== "audit" ? (
+                <Card style={{ gap: 12 }}>
+                  <Txt>{nt("networkApproval")}</Txt>
+                  {owner ? (
                     <Button
                       secondary
-                      label={nt("refresh")}
-                      onPress={page.retry}
+                      label={nt("settings")}
+                      onPress={() => navigate("settings")}
                     />
-                  </>
-                )}
-                {page.hasMore && (
+                  ) : null}
+                </Card>
+              ) : null}
+            </View>
+          }
+          ListEmptyComponent={
+            status.loading || page.loading ? (
+              <View style={{ paddingVertical: 32, gap: 12 }}>
+                <ActivityIndicator color={colors.green} />
+                <Txt muted style={{ textAlign: "center" }}>
+                  {t("loading")}
+                </Txt>
+              </View>
+            ) : canList && !page.error ? (
+              <View style={{ paddingBottom: 16 }}>
+                <Empty
+                  title={nt(
+                    query
+                      ? "noResults"
+                      : section === "board"
+                        ? "boardEmpty"
+                        : section === "connections"
+                          ? "connectionsEmpty"
+                          : "empty",
+                  )}
+                  hint={
+                    query
+                      ? nt("searchHint")
+                      : section === "board"
+                        ? nt("boardHint")
+                        : section === "connections"
+                          ? nt("connectionsHint")
+                          : undefined
+                  }
+                />
+                {!query &&
+                enabled &&
+                (section === "board" || section === "connections") ? (
                   <Button
                     secondary
-                    loading={page.loading}
-                    label={nt("more")}
-                    onPress={page.loadMore}
+                    label={nt("directory")}
+                    onPress={() => navigate("directory")}
                   />
-                )}
-                <Txt muted size={12}>
-                  {nt("privacy")}
-                </Txt>
-                {section === "directory" && (
-                  <Txt muted size={12}>
-                    {nt("approvalHint")}
-                  </Txt>
-                )}
+                ) : null}
               </View>
-            }
-          />
-        </>
+            ) : null
+          }
+          ListFooterComponent={
+            <View style={{ gap: 12, paddingVertical: 12 }}>
+              {page.error ? (
+                <>
+                  <Notice
+                    message={networkError(language, page.error)}
+                    tone="error"
+                  />
+                  <Button
+                    secondary
+                    label={nt("refresh")}
+                    onPress={page.retry}
+                  />
+                </>
+              ) : page.hasMore ? (
+                <Button
+                  secondary
+                  loading={page.loading}
+                  label={nt("more")}
+                  onPress={page.loadMore}
+                />
+              ) : page.items.length > 0 && !page.loading ? (
+                <Txt muted size={12} style={{ textAlign: "center" }}>
+                  {nt("allLoaded")}
+                </Txt>
+              ) : null}
+              <Txt muted size={11}>
+                {nt("privacy")}
+              </Txt>
+              {section === "directory" ? (
+                <Txt muted size={11}>
+                  {nt("approvalHint")}
+                </Txt>
+              ) : null}
+            </View>
+          }
+        />
       )}
       {compose && (
         <NetworkComposer
@@ -463,7 +442,7 @@ function NetworkSession() {
           onClose={() => setCompose(null)}
           onSaved={() => {
             setCompose(null);
-            setSuccess(true);
+            showSuccess(nt("phoneShared"));
             refresh();
           }}
         />
@@ -543,14 +522,17 @@ function NetworkSettings({
     [preview, setPreview] = useState(false);
   return (
     <>
-      <Notice message={nt("profileHint")} />
-      {p && (
-        <Txt bold>
-          {nt(p.status)} · {p.enabled ? nt("enable") : nt("disabled")}
-        </Txt>
-      )}
+      {p ? (
+        <Row style={{ flexWrap: "wrap", marginBottom: 16 }}>
+          <NetworkBadge label={nt(p.status)} muted={p.status !== "approved"} />
+          {!p.enabled ? <NetworkBadge label={nt("disabled")} muted /> : null}
+        </Row>
+      ) : null}
       {status.owner ? (
-        <Card>
+        <Card style={{ padding: 16, gap: 12 }}>
+          <Txt muted size={13}>
+            {nt("profileHint")}
+          </Txt>
           {preview ? (
             <>
               <Txt bold>{nt("preview")}</Txt>
@@ -615,25 +597,28 @@ function NetworkSettings({
       ) : (
         <Notice message={nt("readOnly")} />
       )}
-      {status.owner && (
-        <Card>
-          <Heading title={nt("staff")} />
-          {status.members
-            .filter((m) => m.role === "staff")
-            .map((m) => (
-              <View key={m.user_id} style={{ gap: 8, marginBottom: 14 }}>
-                <Txt size={12}>{m.phone || m.user_id}</Txt>
-                <Button
-                  secondary
-                  small
-                  disabled={busy}
-                  label={nt(m.can_share ? "revoke" : "grant")}
-                  onPress={() => onPermission(m.user_id, !m.can_share)}
-                />
-              </View>
-            ))}
-        </Card>
-      )}
+      {status.owner &&
+        status.members.some((member) => member.role === "staff") && (
+          <Card style={{ padding: 16, gap: 12 }}>
+            <Txt bold size={17}>
+              {nt("staff")}
+            </Txt>
+            {status.members
+              .filter((m) => m.role === "staff")
+              .map((m) => (
+                <View key={m.user_id} style={{ gap: 8, marginBottom: 14 }}>
+                  <Txt size={12}>{m.phone || m.user_id}</Txt>
+                  <Button
+                    secondary
+                    small
+                    disabled={busy}
+                    label={nt(m.can_share ? "revoke" : "grant")}
+                    onPress={() => onPermission(m.user_id, !m.can_share)}
+                  />
+                </View>
+              ))}
+          </Card>
+        )}
     </>
   );
 }

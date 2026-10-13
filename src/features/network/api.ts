@@ -1,4 +1,5 @@
 import { backend } from "../../data/backend";
+import { NETWORK_PAGE_SIZE } from "./types";
 import type { NetworkCall, NetworkPage, NetworkRow } from "./types";
 export function networkApi(shopId: string): NetworkCall {
   return async <T>(
@@ -27,7 +28,7 @@ export async function networkPage(
 ): Promise<NetworkPage<NetworkRow>> {
   const p = await call<NetworkPage<NetworkRow>>(
     "list",
-    { section, offset: offset ?? 0, query },
+    { section, offset: offset ?? 0, query, limit: NETWORK_PAGE_SIZE },
     signal,
   );
   return {

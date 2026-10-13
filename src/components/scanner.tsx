@@ -1,6 +1,7 @@
 import { useVisualPreferences } from "./visual-effects";
 import { useEffect, useRef, useState } from "react";
-import { AppState, Image, Linking, Modal, Platform, View } from "react-native";
+import { AppState, Image, Linking, Platform, View } from "react-native";
+import { ScreenModal } from "./screen-modal";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import type { Person } from "../domain/models";
 import type { ScanPhoto } from "../domain/tazkira";
@@ -184,14 +185,16 @@ function ImeiScanner({
     }
   }
   return (
-    <Modal animationType={reduceMotion ? "none" : "slide"} onRequestClose={() => void close()}>
+    <ScreenModal
+      animationType={reduceMotion ? "none" : "slide"}
+      onRequestClose={() => void close()}
+    >
       <Screen>
         <Heading
           title={t("scanImei")}
           action={
             <Button
               label={t("close")}
-              small
               secondary
               onPress={() => void close()}
             />
@@ -337,7 +340,7 @@ function ImeiScanner({
           </Card>
         ) : null}
       </Screen>
-    </Modal>
+    </ScreenModal>
   );
 }
 export function Scanner(props: {

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FlatList, Modal, Pressable, View } from "react-native";
+import { ScreenModal } from "./screen-modal";
 import { useApp } from "../state/app-context";
 import { useServerPage } from "../state/use-server-page";
 import type { RecordCursor } from "../data/shop-queries";
@@ -41,12 +42,12 @@ export function PurchasedPhonePicker({
     !!queries,
   );
   return (
-    <Modal visible animationType="slide" onRequestClose={onClose}>
+    <ScreenModal visible animationType="slide" onRequestClose={onClose}>
       <Screen scroll={false}>
         <Heading
           title={t("choosePurchasedPhone")}
           action={
-            <Button small secondary label={t("close")} onPress={onClose} />
+            <Button secondary label={t("close")} onPress={onClose} />
           }
         />
         <SearchField
@@ -122,7 +123,7 @@ export function PurchasedPhonePicker({
           }
         />
       </Screen>
-    </Modal>
+    </ScreenModal>
   );
 }
 export function SalePurchaseConfirmation({

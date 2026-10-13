@@ -40,6 +40,12 @@ test("shop network consent, private fields, staff grants, moderation, transition
       ),
     );
     await db.exec(
+      readFileSync(
+        "supabase/migrations/20261013065014_shop_network_page_size.sql",
+        "utf8",
+      ),
+    );
+    await db.exec(
       `insert into auth.users(id) values('${a}'),('${b}'),('${c}'),('${admin}'),('${staff}');insert into account_status values('${a}',false),('${b}',false),('${c}',false),('${staff}',false);insert into shops(id,profile) values('${sa}','{}'),('${sb}','{}'),('${sc}','{}');insert into memberships values('${sa}','${a}','owner',true),('${sb}','${b}','owner',true),('${sc}','${c}','owner',true),('${sa}','${staff}','staff',true);insert into private.platform_administrators values('${admin}',true);`,
     );
     async function as(user: string) {
@@ -253,8 +259,8 @@ test("shop network consent, private fields, staff grants, moderation, transition
       section: "board",
       offset: first.next,
     });
-    assert.equal(first.items.length, 25);
-    assert.equal(second.items.length, 7);
+    assert.equal(first.items.length, 20);
+    assert.equal(second.items.length, 12);
     assert.equal(second.next, null);
     assert.equal(
       new Set([...first.items, ...second.items].map((x) => x.id)).size,

@@ -4,6 +4,7 @@ import { View, type ViewStyle } from "react-native";
 import { scanTemplates } from "../domain/fingerprints";
 import type { FingerprintEntry, FingerprintSlot } from "../domain/models";
 import { useApp } from "../state/app-context";
+import { useSuccessFeedback } from "./success-feedback";
 import { playEnrollmentSuccess } from "../services/enrollment-sound";
 import { FingerprintPrompt } from "./fingerprint-prompt";
 import {
@@ -39,6 +40,7 @@ export function FingerprintCards({
   manageStored?: boolean;
   cardStyle?: ViewStyle;
 }) {
+  const showSuccess = useSuccessFeedback();
   const app = useApp(),
     { t } = app;
   const [action, setAction] = useState<{
@@ -63,6 +65,7 @@ export function FingerprintCards({
       setAction(null);
       setReason("");
       setScanning(false);
+      if (enrollment) showSuccess(t("fpSaved"));
     } catch (e) {
       setScanning(false);
       setError(errorText(e, t));
